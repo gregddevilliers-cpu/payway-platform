@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import prisma from '../lib/prisma';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { AppError } from '../middleware/errorHandler';
 import {
   assignTag,
@@ -30,7 +31,7 @@ const tagAccess = requireRole('super_admin', 'operator_admin', 'fleet_manager');
 // ---------------------------------------------------------------------------
 router.get('/summary', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const summary = await getTagSummary(operatorId, prisma);
     res.json({ success: true, data: summary });
   } catch (err) {
@@ -43,7 +44,7 @@ router.get('/summary', tagAccess, async (req: Request, res: Response, next: Next
 // ---------------------------------------------------------------------------
 router.get('/', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const {
       status,
       vehicleId,
@@ -99,8 +100,8 @@ router.get('/', tagAccess, async (req: Request, res: Response, next: NextFunctio
 // ---------------------------------------------------------------------------
 router.post('/', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { tagNumber, expiryDate, notes } = req.body as {
       tagNumber?: string;
       expiryDate?: string;
@@ -144,7 +145,7 @@ router.post('/', tagAccess, async (req: Request, res: Response, next: NextFuncti
 // ---------------------------------------------------------------------------
 router.get('/:id', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
 
     const tag = await prisma.tag.findFirst({
@@ -170,7 +171,7 @@ router.get('/:id', tagAccess, async (req: Request, res: Response, next: NextFunc
 // ---------------------------------------------------------------------------
 router.patch('/:id', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
     const { notes, expiryDate } = req.body as { notes?: string; expiryDate?: string };
 
@@ -196,7 +197,7 @@ router.patch('/:id', tagAccess, async (req: Request, res: Response, next: NextFu
 // ---------------------------------------------------------------------------
 router.delete('/:id', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
 
     const tag = await prisma.tag.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -223,7 +224,7 @@ router.post('/:id/assign', tagAccess, async (req: Request, res: Response, next: 
     const { id } = req.params as { id: string };
     const { vehicleId } = req.body as { vehicleId?: string };
     if (!vehicleId) throw new AppError(400, 'vehicleId is required');
-    const result = await assignTag(id, vehicleId, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await assignTag(id, vehicleId, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -235,7 +236,7 @@ router.post('/:id/unassign', tagAccess, async (req: Request, res: Response, next
   try {
     const { id } = req.params as { id: string };
     const { reason } = req.body as { reason?: string };
-    const result = await unassignTag(id, req.user!.userId, req.user!.operatorId, reason, prisma);
+    const result = await unassignTag(id, req.user!.id, req.user!.operatorId!, reason, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -248,7 +249,7 @@ router.post('/:id/block', tagAccess, async (req: Request, res: Response, next: N
     const { id } = req.params as { id: string };
     const { reason } = req.body as { reason?: string };
     if (!reason) throw new AppError(400, `reason is required. Must be one of: ${BLOCKED_REASONS.join(', ')}`);
-    const result = await blockTag(id, reason as BlockedReason, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await blockTag(id, reason as BlockedReason, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -259,7 +260,7 @@ router.post('/:id/block', tagAccess, async (req: Request, res: Response, next: N
 router.post('/:id/unblock', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params as { id: string };
-    const result = await unblockTag(id, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await unblockTag(id, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -270,7 +271,7 @@ router.post('/:id/unblock', tagAccess, async (req: Request, res: Response, next:
 router.post('/:id/report-lost', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params as { id: string };
-    const result = await reportLost(id, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await reportLost(id, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -283,7 +284,7 @@ router.post('/:id/replace', tagAccess, async (req: Request, res: Response, next:
     const { id } = req.params as { id: string };
     const { newTagId } = req.body as { newTagId?: string };
     if (!newTagId) throw new AppError(400, 'newTagId is required');
-    const result = await replaceTag(id, newTagId, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await replaceTag(id, newTagId, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -298,12 +299,12 @@ router.post('/:id/transfer', tagAccess, async (req: Request, res: Response, next
     if (!toVehicleId) throw new AppError(400, 'toVehicleId is required');
 
     const tag = await prisma.tag.findFirst({
-      where: { id, operatorId: req.user!.operatorId, deletedAt: null },
+      where: { id, operatorId: req.user!.operatorId!, deletedAt: null },
     });
     if (!tag) throw new AppError(404, 'Tag not found');
     if (!tag.vehicleId) throw new AppError(400, 'Tag is not assigned to any vehicle');
 
-    const result = await transferTag(id, tag.vehicleId, toVehicleId, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await transferTag(id, tag.vehicleId, toVehicleId, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -314,7 +315,7 @@ router.post('/:id/transfer', tagAccess, async (req: Request, res: Response, next
 router.post('/:id/decommission', requireRole('super_admin', 'operator_admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params as { id: string };
-    const result = await decommissionTag(id, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await decommissionTag(id, req.user!.id, req.user!.operatorId!, prisma);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -326,7 +327,7 @@ router.post('/:id/decommission', requireRole('super_admin', 'operator_admin'), a
 // ---------------------------------------------------------------------------
 router.get('/:id/history', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
 
     const tag = await prisma.tag.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -348,8 +349,8 @@ router.get('/:id/history', tagAccess, async (req: Request, res: Response, next: 
 // ---------------------------------------------------------------------------
 router.post('/bulk-action', requireRole('super_admin', 'operator_admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { ids, action, params } = req.body as {
       ids?: string[];
       action?: string;
@@ -391,7 +392,7 @@ router.post('/bulk-action', requireRole('super_admin', 'operator_admin'), async 
 // ---------------------------------------------------------------------------
 router.post('/export', tagAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { status, vehicleId, search } = req.body as Record<string, string>;
 
     const tags = await prisma.tag.findMany({
@@ -410,7 +411,7 @@ router.post('/export', tagAccess, async (req: Request, res: Response, next: Next
 
     const header = 'Tag Number,Vehicle Reg,Make,Model,Status,Issued Date,Expiry Date,Last Used,Blocked Reason\n';
     const rows = tags
-      .map((t) =>
+      .map((t: any) =>
         [
           t.tagNumber,
           t.vehicle?.registrationNumber ?? '',

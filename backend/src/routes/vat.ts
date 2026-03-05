@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import prisma from '../lib/prisma';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import {
   getVatSummary,
   getVatByFleet,
@@ -27,7 +28,7 @@ function parseDateRange(req: Request): { from: Date; to: Date } {
 // ---------------------------------------------------------------------------
 router.get('/summary', vatAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { from, to } = parseDateRange(req);
     const summary = await getVatSummary(operatorId, from, to, prisma);
     res.json({ success: true, data: summary });
@@ -41,7 +42,7 @@ router.get('/summary', vatAccess, async (req: Request, res: Response, next: Next
 // ---------------------------------------------------------------------------
 router.get('/by-fleet', vatAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { from, to } = parseDateRange(req);
     const data = await getVatByFleet(operatorId, from, to, prisma);
     res.json({ success: true, data });
@@ -55,7 +56,7 @@ router.get('/by-fleet', vatAccess, async (req: Request, res: Response, next: Nex
 // ---------------------------------------------------------------------------
 router.get('/by-cost-centre', vatAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { from, to } = parseDateRange(req);
     const data = await getVatByCostCentre(operatorId, from, to, prisma);
     res.json({ success: true, data });
@@ -69,7 +70,7 @@ router.get('/by-cost-centre', vatAccess, async (req: Request, res: Response, nex
 // ---------------------------------------------------------------------------
 router.get('/trend', vatAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const months = Math.min(24, Math.max(1, parseInt((req.query.months as string) ?? '12', 10)));
     const data = await getMonthlyVatTrend(operatorId, months, prisma);
     res.json({ success: true, data });
@@ -83,7 +84,7 @@ router.get('/trend', vatAccess, async (req: Request, res: Response, next: NextFu
 // ---------------------------------------------------------------------------
 router.post('/export', vatAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { dateFrom, dateTo, groupBy = 'fleet' } = req.body as {
       dateFrom?: string;
       dateTo?: string;
@@ -100,20 +101,20 @@ router.post('/export', vatAccess, async (req: Request, res: Response, next: Next
       const data = await getVatByFleet(operatorId, from, to, prisma);
       header = 'Fleet,Excl. VAT (ZAR),VAT (ZAR),Incl. VAT (ZAR)\n';
       rows = data.map(
-        (r) => `"${r.fleetName}","${r.total.exclVat}","${r.total.vatAmount}","${r.total.inclVat}"`,
+        (r: any) => `"${r.fleetName}","${r.total.exclVat}","${r.total.vatAmount}","${r.total.inclVat}"`,
       );
     } else if (groupBy === 'cost_centre') {
       const data = await getVatByCostCentre(operatorId, from, to, prisma);
       header = 'Cost Centre,Code,Excl. VAT (ZAR),VAT (ZAR),Incl. VAT (ZAR)\n';
       rows = data.map(
-        (r) =>
+        (r: any) =>
           `"${r.costCentreName}","${r.code}","${r.total.exclVat}","${r.total.vatAmount}","${r.total.inclVat}"`,
       );
     } else {
       const data = await getMonthlyVatTrend(operatorId, 12, prisma);
       header = 'Month,Year,Fuel VAT (ZAR),Maintenance VAT (ZAR),Repair VAT (ZAR),Total VAT (ZAR)\n';
       rows = data.map(
-        (r) => `"${r.month}","${r.year}","${r.fuelVat}","${r.maintenanceVat}","${r.repairVat}","${r.totalVat}"`,
+        (r: any) => `"${r.month}","${r.year}","${r.fuelVat}","${r.maintenanceVat}","${r.repairVat}","${r.totalVat}"`,
       );
     }
 

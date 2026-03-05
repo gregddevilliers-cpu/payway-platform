@@ -14,8 +14,12 @@ export function useCostCentres(params?: { format?: 'tree'; isActive?: boolean })
   return useQuery({
     queryKey: ccKeys.list(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<CostCentre[]>>('/cost-centres', { params });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (params?.format) qs.set('format', params.format);
+      if (params?.isActive !== undefined) qs.set('isActive', String(params.isActive));
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<CostCentre[]>>(`/cost-centres${query ? `?${query}` : ''}`);
+      return res;
     },
   });
 }
@@ -24,8 +28,12 @@ export function useCostCentre(id: string, dateParams?: { dateFrom?: string; date
   return useQuery({
     queryKey: ccKeys.detail(id),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<CostCentre>>(`/cost-centres/${id}`, { params: dateParams });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (dateParams?.dateFrom) qs.set('dateFrom', dateParams.dateFrom);
+      if (dateParams?.dateTo) qs.set('dateTo', dateParams.dateTo);
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<CostCentre>>(`/cost-centres/${id}${query ? `?${query}` : ''}`);
+      return res;
     },
     enabled: !!id,
   });
@@ -35,8 +43,12 @@ export function useSpendSummary(params?: { dateFrom?: string; dateTo?: string })
   return useQuery({
     queryKey: ccKeys.spendSummary(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<SpendByCostCentre[]>>('/cost-centres/spend-summary', { params });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) qs.set('dateTo', params.dateTo);
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<SpendByCostCentre[]>>(`/cost-centres/spend-summary${query ? `?${query}` : ''}`);
+      return res;
     },
   });
 }
@@ -48,8 +60,12 @@ export function useCostCentreTransactions(
   return useQuery({
     queryKey: ccKeys.transactions(id, params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<unknown[]>>(`/cost-centres/${id}/transactions`, { params });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<unknown[]>>(`/cost-centres/${id}/transactions${query ? `?${query}` : ''}`);
+      return res;
     },
     enabled: !!id,
   });
@@ -67,7 +83,7 @@ export function useCreateCostCentre() {
       parentId?: string;
     }) => {
       const res = await api.post<ApiResponse<CostCentre>>('/cost-centres', data);
-      return res.data.data;
+      return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ccKeys.all }),
   });
@@ -78,7 +94,7 @@ export function useUpdateCostCentre() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string; [key: string]: unknown }) => {
       const res = await api.patch<ApiResponse<CostCentre>>(`/cost-centres/${id}`, data);
-      return res.data.data;
+      return res.data;
     },
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ccKeys.all });

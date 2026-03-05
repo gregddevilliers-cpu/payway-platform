@@ -50,8 +50,9 @@ export default function NewFuelTransactionPage() {
   };
 
   const mutation = useMutation({
-    mutationFn: (payload: CreatePayload) => api.post('/fuel-transactions', payload),
-    onSuccess: (res: { data: { id: string } }) => {
+    mutationFn: (payload: CreatePayload) =>
+      api.post<{ success: boolean; data: { id: string } }>('/fuel-transactions', payload),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['fuel-transactions'] });
       router.push(`/fuel/${res.data.id}`);
     },

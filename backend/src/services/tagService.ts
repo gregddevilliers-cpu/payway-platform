@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { AppError } from '../middleware/errorHandler';
-import { logAudit } from './auditService';
+import { logAction } from './auditService';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -135,10 +135,9 @@ export async function assignTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'ASSIGN_TAG', entityType: 'Tag', entityId: tagId, changes: { vehicleId, status: 'active' } },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'assignment', entityType: 'tag', entityId: tagId, metadata: { vehicleId, status: 'active' },
+  });
 
   return updated;
 }
@@ -186,10 +185,9 @@ export async function unassignTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'UNASSIGN_TAG', entityType: 'Tag', entityId: tagId, changes: { vehicleId: tag.vehicleId } },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'assignment', entityType: 'tag', entityId: tagId, metadata: { vehicleId: tag.vehicleId },
+  });
 
   return updated;
 }
@@ -248,10 +246,9 @@ export async function blockTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'BLOCK_TAG', entityType: 'Tag', entityId: tagId, changes: { status: 'blocked', reason } },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'status_change', entityType: 'tag', entityId: tagId, metadata: { status: 'blocked', reason },
+  });
 
   await sendTagAlert(
     `Tag ${tag.tagNumber} has been BLOCKED. Reason: ${reason}`,
@@ -315,10 +312,9 @@ export async function unblockTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'UNBLOCK_TAG', entityType: 'Tag', entityId: tagId, changes: { status: newStatus } },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'status_change', entityType: 'tag', entityId: tagId, metadata: { status: newStatus },
+  });
 
   return updated;
 }
@@ -372,10 +368,9 @@ export async function reportLost(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'REPORT_TAG_LOST', entityType: 'Tag', entityId: tagId },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'status_change', entityType: 'tag', entityId: tagId, metadata: { status: 'lost' },
+  });
 
   await sendTagAlert(`Tag ${tag.tagNumber} has been reported LOST.`, operatorId, prisma);
 
@@ -461,17 +456,10 @@ export async function replaceTag(
     }
   });
 
-  await logAudit(
-    {
-      operatorId,
-      userId,
-      action: 'REPLACE_TAG',
-      entityType: 'Tag',
-      entityId: oldTagId,
-      changes: { from: { tagId: oldTagId }, to: { tagId: newTagId } },
-    },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'update', entityType: 'tag', entityId: oldTagId,
+    metadata: { from: { tagId: oldTagId }, to: { tagId: newTagId } },
+  });
 
   return { oldTagId, newTagId, vehicleId };
 }
@@ -532,10 +520,10 @@ export async function transferTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'TRANSFER_TAG', entityType: 'Tag', entityId: tagId, changes: { from: fromVehicleId, to: toVehicleId } },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'assignment', entityType: 'tag', entityId: tagId,
+    metadata: { from: fromVehicleId, to: toVehicleId },
+  });
 
   return updated;
 }
@@ -630,10 +618,10 @@ export async function decommissionTag(
     return updatedTag;
   });
 
-  await logAudit(
-    { operatorId, userId, action: 'DECOMMISSION_TAG', entityType: 'Tag', entityId: tagId },
-    prisma,
-  );
+  await logAction({
+    operatorId, userId, action: 'status_change', entityType: 'tag', entityId: tagId,
+    metadata: { status: 'decommissioned' },
+  });
 
   return updated;
 }

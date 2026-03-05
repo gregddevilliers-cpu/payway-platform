@@ -57,30 +57,30 @@ async function getActualSpend(
   dateTo: Date,
   prisma: PrismaClient,
 ): Promise<SpendBreakdown> {
-  const fuelWhere =
+  const fuelWhere: any =
     entityType === 'fleet'
       ? { fleetId: entityId, transactionDate: { gte: dateFrom, lte: dateTo } }
       : { costCentreId: entityId, transactionDate: { gte: dateFrom, lte: dateTo } };
 
-  const maintWhere =
+  const maintWhere: any =
     entityType === 'fleet'
       ? { fleetId: entityId, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null as null }
       : { costCentreId: entityId, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null as null };
 
-  const repairWhere =
+  const repairWhere: any =
     entityType === 'fleet'
       ? { fleetId: entityId, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null as null }
       : { costCentreId: entityId, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null as null };
 
-  const [fuelAgg, maintAgg, repairAgg] = await Promise.all([
+  const [fuelAgg, maintAgg, repairAgg]: any[] = await Promise.all([
     prisma.fuelTransaction.aggregate({ where: fuelWhere, _sum: { totalAmount: true } }),
     prisma.maintenanceRecord.aggregate({ where: maintWhere, _sum: { cost: true } }),
     prisma.repairJob.aggregate({ where: repairWhere, _sum: { totalCost: true } }),
   ]);
 
-  const fuel = Number(fuelAgg._sum.totalAmount ?? 0);
-  const maintenance = Number(maintAgg._sum.cost ?? 0);
-  const repair = Number(repairAgg._sum.totalCost ?? 0);
+  const fuel = Number(fuelAgg._sum?.totalAmount ?? 0);
+  const maintenance = Number(maintAgg._sum?.cost ?? 0);
+  const repair = Number(repairAgg._sum?.totalCost ?? 0);
 
   return { fuel, maintenance, repair, total: fuel + maintenance + repair };
 }
@@ -105,7 +105,7 @@ export async function getFleetBudgetVariance(
   });
 
   return Promise.all(
-    fleets.map(async (fleet) => {
+    fleets.map(async (fleet: any) => {
       const budget = Number(fleet.monthlyBudget!);
       const spend = await getActualSpend('fleet', fleet.id, dateFrom, dateTo, prisma);
       const variance = budget - spend.total;
@@ -148,7 +148,7 @@ export async function getCostCentreBudgetVariance(
     1;
 
   return Promise.all(
-    costCentres.map(async (cc) => {
+    costCentres.map(async (cc: any) => {
       const rawBudget = Number(cc.budget!);
 
       // Scale budget to match date range

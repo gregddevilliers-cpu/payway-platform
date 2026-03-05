@@ -22,8 +22,12 @@ export function useFleetBudgetVariance(params?: DateParams) {
   return useQuery({
     queryKey: budgetKeys.fleetVariance(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<BudgetVarianceEntry[]>>('/budget/fleet-variance', { params });
-      return res.data.data;
+      const qs = new URLSearchParams();
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) qs.set('dateTo', params.dateTo);
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<BudgetVarianceEntry[]>>(`/budget/fleet-variance${query ? `?${query}` : ''}`);
+      return res.data;
     },
   });
 }
@@ -32,8 +36,12 @@ export function useCostCentreBudgetVariance(params?: DateParams) {
   return useQuery({
     queryKey: budgetKeys.ccVariance(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<BudgetVarianceEntry[]>>('/budget/cost-centre-variance', { params });
-      return res.data.data;
+      const qs = new URLSearchParams();
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) qs.set('dateTo', params.dateTo);
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<BudgetVarianceEntry[]>>(`/budget/cost-centre-variance${query ? `?${query}` : ''}`);
+      return res.data;
     },
   });
 }
@@ -43,10 +51,9 @@ export function useBudgetTrend(entityType: string, entityId: string, months = 6)
     queryKey: budgetKeys.trend(entityType, entityId, months),
     queryFn: async () => {
       const res = await api.get<ApiResponse<BudgetVarianceTrendEntry[]>>(
-        `/budget/trend/${entityType}/${entityId}`,
-        { params: { months } },
+        `/budget/trend/${entityType}/${entityId}?months=${months}`,
       );
-      return res.data.data;
+      return res.data;
     },
     enabled: !!entityId,
   });
@@ -59,7 +66,7 @@ export function useBudgetForecast(entityType: string, entityId: string) {
       const res = await api.get<ApiResponse<BudgetForecast>>(
         `/budget/forecast/${entityType}/${entityId}`,
       );
-      return res.data.data;
+      return res.data;
     },
     enabled: !!entityId,
   });
@@ -70,7 +77,7 @@ export function useBudgetAlerts() {
     queryKey: budgetKeys.alerts(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<BudgetAlert[]>>('/budget/alerts');
-      return res.data.data;
+      return res.data;
     },
   });
 }

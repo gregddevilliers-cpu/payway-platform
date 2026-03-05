@@ -29,64 +29,64 @@ export async function getVatSummary(
   dateTo: Date,
   prisma: PrismaClient,
 ) {
-  const [fuelAgg, maintenanceAgg, repairAgg] = await Promise.all([
-    prisma.fuelTransaction.aggregate({
+  const [fuelAgg, maintenanceAgg, repairAgg]: any[] = await Promise.all([
+    (prisma.fuelTransaction.aggregate as any)({
       where: { operatorId, transactionDate: { gte: dateFrom, lte: dateTo } },
       _sum: { totalAmount: true, amountExclVat: true, vatAmount: true },
       _count: { _all: true },
     }),
-    prisma.maintenanceRecord.aggregate({
+    (prisma.maintenanceRecord.aggregate as any)({
       where: { operatorId, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null },
       _sum: { cost: true, costExclVat: true, vatAmount: true, costInclVat: true },
       _count: { _all: true },
     }),
-    prisma.repairJob.aggregate({
+    (prisma.repairJob.aggregate as any)({
       where: { operatorId, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null },
       _sum: { totalCost: true, vatAmount: true },
       _count: { _all: true },
     }),
   ]);
 
-  const fuelInclVat = Number(fuelAgg._sum.totalAmount ?? 0);
-  const fuelVat = Number(fuelAgg._sum.vatAmount ?? 0);
+  const fuelInclVat = Number(fuelAgg._sum?.totalAmount ?? 0);
+  const fuelVat = Number(fuelAgg._sum?.vatAmount ?? 0);
   const fuelExclVat = fuelVat > 0
-    ? Number(fuelAgg._sum.amountExclVat ?? 0)
+    ? Number(fuelAgg._sum?.amountExclVat ?? 0)
     : r2(fuelInclVat / (1 + VAT_CONFIG.rate));
 
-  const maintenanceInclVat = Number(fuelAgg._sum.totalAmount !== null
-    ? (maintenanceAgg._sum.costInclVat ?? maintenanceAgg._sum.cost ?? 0)
+  const maintenanceInclVat = Number(fuelAgg._sum?.totalAmount !== null
+    ? (maintenanceAgg._sum?.costInclVat ?? maintenanceAgg._sum?.cost ?? 0)
     : 0);
-  const maintenanceVat = Number(maintenanceAgg._sum.vatAmount ?? 0);
-  const maintenanceExclVat = Number(maintenanceAgg._sum.costExclVat ?? 0) ||
+  const maintenanceVat = Number(maintenanceAgg._sum?.vatAmount ?? 0);
+  const maintenanceExclVat = Number(maintenanceAgg._sum?.costExclVat ?? 0) ||
     r2(maintenanceInclVat - maintenanceVat);
 
-  const repairInclVat = Number(repairAgg._sum.totalCost ?? 0);
-  const repairVat = Number(repairAgg._sum.vatAmount ?? 0);
+  const repairInclVat = Number(repairAgg._sum?.totalCost ?? 0);
+  const repairVat = Number(repairAgg._sum?.vatAmount ?? 0);
   const repairExclVat = r2(repairInclVat - repairVat);
 
   // Recalculate maintenance properly
-  const mainInclVat2 = Number(maintenanceAgg._sum.costInclVat ?? maintenanceAgg._sum.cost ?? 0);
-  const mainVat2 = Number(maintenanceAgg._sum.vatAmount ?? 0);
-  const mainExclVat2 = Number(maintenanceAgg._sum.costExclVat ?? 0) || r2(mainInclVat2 - mainVat2);
+  const mainInclVat2 = Number(maintenanceAgg._sum?.costInclVat ?? maintenanceAgg._sum?.cost ?? 0);
+  const mainVat2 = Number(maintenanceAgg._sum?.vatAmount ?? 0);
+  const mainExclVat2 = Number(maintenanceAgg._sum?.costExclVat ?? 0) || r2(mainInclVat2 - mainVat2);
 
   return {
     fuelVat: {
       totalExclVat: r2(fuelExclVat),
       totalVat: r2(fuelVat),
       totalInclVat: r2(fuelInclVat),
-      transactionCount: fuelAgg._count._all,
+      transactionCount: fuelAgg._count?._all ?? 0,
     },
     maintenanceVat: {
       totalExclVat: r2(mainExclVat2),
       totalVat: r2(mainVat2),
       totalInclVat: r2(mainInclVat2),
-      recordCount: maintenanceAgg._count._all,
+      recordCount: maintenanceAgg._count?._all ?? 0,
     },
     repairVat: {
       totalExclVat: r2(repairExclVat),
       totalVat: r2(repairVat),
       totalInclVat: r2(repairInclVat),
-      jobCount: repairAgg._count._all,
+      jobCount: repairAgg._count?._all ?? 0,
     },
     combined: {
       totalExclVat: r2(fuelExclVat + mainExclVat2 + repairExclVat),
@@ -111,32 +111,32 @@ export async function getVatByFleet(
     orderBy: { name: 'asc' },
   });
 
-  const [fuelByFleet, maintenanceByFleet, repairByFleet] = await Promise.all([
-    prisma.fuelTransaction.groupBy({
+  const [fuelByFleet, maintenanceByFleet, repairByFleet]: any[] = await Promise.all([
+    (prisma.fuelTransaction.groupBy as any)({
       by: ['fleetId'],
       where: { operatorId, transactionDate: { gte: dateFrom, lte: dateTo } },
       _sum: { totalAmount: true, vatAmount: true, amountExclVat: true },
     }),
-    prisma.maintenanceRecord.groupBy({
+    (prisma.maintenanceRecord.groupBy as any)({
       by: ['fleetId'],
       where: { operatorId, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null },
       _sum: { cost: true, vatAmount: true, costExclVat: true, costInclVat: true },
     }),
-    prisma.repairJob.groupBy({
+    (prisma.repairJob.groupBy as any)({
       by: ['fleetId'],
       where: { operatorId, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null },
       _sum: { totalCost: true, vatAmount: true },
     }),
   ]);
 
-  const fuelMap = new Map(fuelByFleet.map((r) => [r.fleetId, r._sum]));
-  const maintenanceMap = new Map(maintenanceByFleet.map((r) => [r.fleetId, r._sum]));
-  const repairMap = new Map(repairByFleet.map((r) => [r.fleetId, r._sum]));
+  const fuelMap = new Map(fuelByFleet.map((r: any) => [r.fleetId, r._sum]));
+  const maintenanceMap = new Map(maintenanceByFleet.map((r: any) => [r.fleetId, r._sum]));
+  const repairMap = new Map(repairByFleet.map((r: any) => [r.fleetId, r._sum]));
 
   return fleets.map((fleet) => {
-    const fuel = fuelMap.get(fleet.id);
-    const maint = maintenanceMap.get(fleet.id);
-    const repair = repairMap.get(fleet.id);
+    const fuel: any = fuelMap.get(fleet.id);
+    const maint: any = maintenanceMap.get(fleet.id);
+    const repair: any = repairMap.get(fleet.id);
 
     const fuelInclVat = Number(fuel?.totalAmount ?? 0);
     const fuelVat = Number(fuel?.vatAmount ?? 0);
@@ -180,32 +180,32 @@ export async function getVatByCostCentre(
     orderBy: { name: 'asc' },
   });
 
-  const [fuelByCC, maintenanceByCC, repairByCC] = await Promise.all([
-    prisma.fuelTransaction.groupBy({
+  const [fuelByCC, maintenanceByCC, repairByCC]: any[] = await Promise.all([
+    (prisma.fuelTransaction.groupBy as any)({
       by: ['costCentreId'],
       where: { operatorId, transactionDate: { gte: dateFrom, lte: dateTo }, costCentreId: { not: null } },
       _sum: { totalAmount: true, vatAmount: true, amountExclVat: true },
     }),
-    prisma.maintenanceRecord.groupBy({
+    (prisma.maintenanceRecord.groupBy as any)({
       by: ['costCentreId'],
       where: { operatorId, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null, costCentreId: { not: null } },
       _sum: { cost: true, vatAmount: true, costExclVat: true, costInclVat: true },
     }),
-    prisma.repairJob.groupBy({
+    (prisma.repairJob.groupBy as any)({
       by: ['costCentreId'],
       where: { operatorId, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null, costCentreId: { not: null } },
       _sum: { totalCost: true, vatAmount: true },
     }),
   ]);
 
-  const fuelMap = new Map(fuelByCC.map((r) => [r.costCentreId ?? '', r._sum]));
-  const maintMap = new Map(maintenanceByCC.map((r) => [r.costCentreId ?? '', r._sum]));
-  const repairMap = new Map(repairByCC.map((r) => [r.costCentreId ?? '', r._sum]));
+  const fuelMap = new Map(fuelByCC.map((r: any) => [r.costCentreId ?? '', r._sum]));
+  const maintMap = new Map(maintenanceByCC.map((r: any) => [r.costCentreId ?? '', r._sum]));
+  const repairMap = new Map(repairByCC.map((r: any) => [r.costCentreId ?? '', r._sum]));
 
   return costCentres.map((cc) => {
-    const fuel = fuelMap.get(cc.id);
-    const maint = maintMap.get(cc.id);
-    const repair = repairMap.get(cc.id);
+    const fuel: any = fuelMap.get(cc.id);
+    const maint: any = maintMap.get(cc.id);
+    const repair: any = repairMap.get(cc.id);
 
     const fuelInclVat = Number(fuel?.totalAmount ?? 0);
     const fuelVat = Number(fuel?.vatAmount ?? 0);
@@ -251,24 +251,24 @@ export async function getMonthlyVatTrend(
     const from = new Date(d.getFullYear(), d.getMonth(), 1);
     const to = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const [fuelAgg, maintAgg, repairAgg] = await Promise.all([
-      prisma.fuelTransaction.aggregate({
+    const [fuelAgg, maintAgg, repairAgg]: any[] = await Promise.all([
+      (prisma.fuelTransaction.aggregate as any)({
         where: { operatorId, transactionDate: { gte: from, lte: to } },
         _sum: { vatAmount: true },
       }),
-      prisma.maintenanceRecord.aggregate({
+      (prisma.maintenanceRecord.aggregate as any)({
         where: { operatorId, serviceDate: { gte: from, lte: to }, deletedAt: null },
         _sum: { vatAmount: true },
       }),
-      prisma.repairJob.aggregate({
+      (prisma.repairJob.aggregate as any)({
         where: { operatorId, createdAt: { gte: from, lte: to }, deletedAt: null },
         _sum: { vatAmount: true },
       }),
     ]);
 
-    const fuelVat = r2(Number(fuelAgg._sum.vatAmount ?? 0));
-    const maintenanceVat = r2(Number(maintAgg._sum.vatAmount ?? 0));
-    const repairVat = r2(Number(repairAgg._sum.vatAmount ?? 0));
+    const fuelVat = r2(Number(fuelAgg._sum?.vatAmount ?? 0));
+    const maintenanceVat = r2(Number(maintAgg._sum?.vatAmount ?? 0));
+    const repairVat = r2(Number(repairAgg._sum?.vatAmount ?? 0));
 
     results.push({
       month: from.getMonth() + 1,

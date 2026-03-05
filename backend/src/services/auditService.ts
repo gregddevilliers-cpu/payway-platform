@@ -7,7 +7,8 @@ export type AuditAction =
 export type AuditEntityType =
   | 'vehicle' | 'driver' | 'fleet' | 'fuel_transaction' | 'wallet'
   | 'repair_job' | 'repair_provider' | 'maintenance_record' | 'incident' | 'user'
-  | 'tag' | 'document' | 'notification_preference';
+  | 'tag' | 'document' | 'notification_preference'
+  | 'cost_centre' | 'contract' | 'contract_payment';
 
 export interface LogActionParams {
   userId: string;

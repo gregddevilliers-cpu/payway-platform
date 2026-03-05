@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { AppError } from '../middleware/errorHandler';
 import {
   getFleetBudgetVariance,
@@ -9,7 +10,7 @@ import {
   getBudgetAlerts,
   type BudgetEntityType,
 } from '../services/budgetService';
-import { prisma } from '../lib/prisma';
+import prisma from '../lib/prisma';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ function parseDateRange(req: Request): { from: Date; to: Date } {
 // ---------------------------------------------------------------------------
 router.get('/fleet-variance', budgetAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { from, to } = parseDateRange(req);
     const data = await getFleetBudgetVariance(operatorId, from, to, prisma);
     res.json({ success: true, data });
@@ -44,7 +45,7 @@ router.get('/fleet-variance', budgetAccess, async (req: Request, res: Response, 
 // ---------------------------------------------------------------------------
 router.get('/cost-centre-variance', budgetAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { from, to } = parseDateRange(req);
     const data = await getCostCentreBudgetVariance(operatorId, from, to, prisma);
     res.json({ success: true, data });
@@ -95,7 +96,7 @@ router.get('/forecast/:entityType/:entityId', budgetAccess, async (req: Request,
 // ---------------------------------------------------------------------------
 router.get('/alerts', budgetAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const data = await getBudgetAlerts(operatorId, prisma);
     res.json({ success: true, data });
   } catch (err) {
@@ -108,7 +109,7 @@ router.get('/alerts', budgetAccess, async (req: Request, res: Response, next: Ne
 // ---------------------------------------------------------------------------
 router.post('/export', budgetAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { dateFrom, dateTo, scope = 'fleets' } = req.body as {
       dateFrom?: string;
       dateTo?: string;

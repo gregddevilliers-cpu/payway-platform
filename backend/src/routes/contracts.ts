@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import prisma from '../lib/prisma';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { AppError } from '../middleware/errorHandler';
-import { logAudit } from '../services/auditService';
+import { logAction } from '../services/auditService';
 import {
   getExpiringContracts,
   getExpiredContracts,
@@ -27,7 +28,7 @@ const contractWriteAccess = requireRole('super_admin', 'operator_admin');
 // GET /api/v1/contracts/expiring
 router.get('/expiring', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const days = Math.min(365, Math.max(1, parseInt((req.query.days as string) ?? '30', 10)));
     const data = await getExpiringContracts(operatorId, days, prisma);
     res.json({ success: true, data });
@@ -39,7 +40,7 @@ router.get('/expiring', contractReadAccess, async (req: Request, res: Response, 
 // GET /api/v1/contracts/renewals-due
 router.get('/renewals-due', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const data = await getContractRenewalsDue(operatorId, prisma);
     res.json({ success: true, data });
   } catch (err) {
@@ -50,7 +51,7 @@ router.get('/renewals-due', contractReadAccess, async (req: Request, res: Respon
 // GET /api/v1/contracts/summary
 router.get('/summary', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const data = await getContractSummary(operatorId, prisma);
     res.json({ success: true, data });
   } catch (err) {
@@ -61,7 +62,7 @@ router.get('/summary', contractReadAccess, async (req: Request, res: Response, n
 // POST /api/v1/contracts/export
 router.post('/export', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { status, contractType } = req.body as { status?: string; contractType?: string };
 
     const contracts = await prisma.vehicleContract.findMany({
@@ -79,7 +80,7 @@ router.post('/export', contractReadAccess, async (req: Request, res: Response, n
 
     const header = 'Vehicle Reg,Make,Model,Contract Type,Provider,Start Date,End Date,Monthly Amount (ZAR),Status\n';
     const rows = contracts.map(
-      (c) =>
+      (c: any) =>
         [
           c.vehicle.registrationNumber,
           c.vehicle.make,
@@ -108,7 +109,7 @@ router.post('/export', contractReadAccess, async (req: Request, res: Response, n
 // ---------------------------------------------------------------------------
 router.get('/', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const {
       vehicleId,
       contractType,
@@ -156,7 +157,7 @@ router.get('/', contractReadAccess, async (req: Request, res: Response, next: Ne
       prisma.vehicleContract.count({ where }),
     ]);
 
-    const contractsWithDays = contracts.map((c) => ({
+    const contractsWithDays = contracts.map((c: any) => ({
       ...c,
       daysRemaining: Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
     }));
@@ -176,8 +177,8 @@ router.get('/', contractReadAccess, async (req: Request, res: Response, next: Ne
 // ---------------------------------------------------------------------------
 router.post('/', contractWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const {
       vehicleId,
       contractType,
@@ -249,17 +250,14 @@ router.post('/', contractWriteAccess, async (req: Request, res: Response, next: 
 
     await syncVehicleFields(contract.id, prisma);
 
-    await logAudit(
-      {
-        operatorId,
-        userId,
-        action: 'CREATE_CONTRACT',
-        entityType: 'VehicleContract',
-        entityId: contract.id,
-        changes: { vehicleId, contractType, provider },
-      },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'create',
+      entityType: 'contract',
+      entityId: contract.id,
+      metadata: { vehicleId, contractType, provider },
+    });
 
     res.status(201).json({ success: true, data: contract });
   } catch (err) {
@@ -272,7 +270,7 @@ router.post('/', contractWriteAccess, async (req: Request, res: Response, next: 
 // ---------------------------------------------------------------------------
 router.get('/:id', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
 
     const contract = await prisma.vehicleContract.findFirst({
@@ -287,8 +285,8 @@ router.get('/:id', contractReadAccess, async (req: Request, res: Response, next:
 
     const now = new Date();
     const totalPaid = contract.payments
-      .filter((p) => p.status === 'completed')
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+      .filter((p: any) => p.status === 'completed')
+      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
     res.json({
       success: true,
@@ -312,8 +310,8 @@ router.get('/:id', contractReadAccess, async (req: Request, res: Response, next:
 // ---------------------------------------------------------------------------
 router.patch('/:id', contractWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { id } = req.params as { id: string };
 
     const existing = await prisma.vehicleContract.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -360,10 +358,14 @@ router.patch('/:id', contractWriteAccess, async (req: Request, res: Response, ne
 
     await syncVehicleFields(id, prisma);
 
-    await logAudit(
-      { operatorId, userId, action: 'UPDATE_CONTRACT', entityType: 'VehicleContract', entityId: id, changes: req.body },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'update',
+      entityType: 'contract',
+      entityId: id,
+      metadata: req.body as Record<string, unknown>,
+    });
 
     res.json({ success: true, data: updated });
   } catch (err) {
@@ -376,8 +378,8 @@ router.patch('/:id', contractWriteAccess, async (req: Request, res: Response, ne
 // ---------------------------------------------------------------------------
 router.delete('/:id', contractWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { id } = req.params as { id: string };
 
     const contract = await prisma.vehicleContract.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -385,10 +387,13 @@ router.delete('/:id', contractWriteAccess, async (req: Request, res: Response, n
 
     await prisma.vehicleContract.update({ where: { id }, data: { deletedAt: new Date() } });
 
-    await logAudit(
-      { operatorId, userId, action: 'DELETE_CONTRACT', entityType: 'VehicleContract', entityId: id },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'delete',
+      entityType: 'contract',
+      entityId: id,
+    });
 
     res.json({ success: true, data: { message: 'Contract deleted' } });
   } catch (err) {
@@ -408,8 +413,8 @@ router.post('/:id/terminate', contractWriteAccess, async (req: Request, res: Res
     const result = await terminateContract(
       id,
       terminationReason.trim(),
-      req.user!.userId,
-      req.user!.operatorId,
+      req.user!.id,
+      req.user!.operatorId!,
       prisma,
     );
     res.json({ success: true, data: result });
@@ -424,7 +429,7 @@ router.post('/:id/terminate', contractWriteAccess, async (req: Request, res: Res
 router.post('/:id/renew', contractWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params as { id: string };
-    const result = await renewContract(id, req.user!.userId, req.user!.operatorId, prisma);
+    const result = await renewContract(id, req.user!.id, req.user!.operatorId!, prisma);
     res.status(201).json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -436,7 +441,7 @@ router.post('/:id/renew', contractWriteAccess, async (req: Request, res: Respons
 // ---------------------------------------------------------------------------
 router.get('/:id/payments', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
 
     const contract = await prisma.vehicleContract.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -448,8 +453,8 @@ router.get('/:id/payments', contractReadAccess, async (req: Request, res: Respon
     });
 
     const totalPaid = payments
-      .filter((p) => p.status === 'completed')
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+      .filter((p: any) => p.status === 'completed')
+      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
     res.json({
       success: true,
@@ -466,8 +471,8 @@ router.get('/:id/payments', contractReadAccess, async (req: Request, res: Respon
 // ---------------------------------------------------------------------------
 router.post('/:id/payments', contractWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { id } = req.params as { id: string };
     const { paymentDate, amount, vatAmount, paymentMethod, reference, status, notes } = req.body as {
       paymentDate?: string;
@@ -499,17 +504,14 @@ router.post('/:id/payments', contractWriteAccess, async (req: Request, res: Resp
       },
     });
 
-    await logAudit(
-      {
-        operatorId,
-        userId,
-        action: 'RECORD_CONTRACT_PAYMENT',
-        entityType: 'ContractPayment',
-        entityId: payment.id,
-        changes: { contractId: id, amount, paymentDate },
-      },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'create',
+      entityType: 'contract_payment',
+      entityId: payment.id,
+      metadata: { contractId: id, amount, paymentDate },
+    });
 
     res.status(201).json({ success: true, data: payment });
   } catch (err) {

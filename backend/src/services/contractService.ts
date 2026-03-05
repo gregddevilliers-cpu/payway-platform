@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { logAudit } from './auditService';
+import { logAction } from './auditService';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -303,17 +303,14 @@ export async function terminateContract(
     },
   });
 
-  await logAudit(
-    {
-      operatorId,
-      userId,
-      action: 'TERMINATE_CONTRACT',
-      entityType: 'VehicleContract',
-      entityId: contractId,
-      changes: { terminationReason, status: 'terminated' },
-    },
-    prisma,
-  );
+  await logAction({
+    operatorId,
+    userId,
+    action: 'status_change',
+    entityType: 'contract',
+    entityId: contractId,
+    metadata: { terminationReason, status: 'terminated' },
+  });
 
   return updated;
 }
@@ -374,17 +371,14 @@ export async function renewContract(
     return created;
   });
 
-  await logAudit(
-    {
-      operatorId,
-      userId,
-      action: 'RENEW_CONTRACT',
-      entityType: 'VehicleContract',
-      entityId: contractId,
-      changes: { newContractId: newContract.id },
-    },
-    prisma,
-  );
+  await logAction({
+    operatorId,
+    userId,
+    action: 'create',
+    entityType: 'contract',
+    entityId: contractId,
+    metadata: { newContractId: newContract.id },
+  });
 
   await syncVehicleFields(newContract.id, prisma);
 

@@ -51,7 +51,7 @@ export async function getSpendByCostCentre(
   if (costCentres.length === 0) return [];
 
   const [fuelAgg, maintenanceAgg, repairAgg] = await Promise.all([
-    prisma.fuelTransaction.groupBy({
+    (prisma.fuelTransaction.groupBy as any)({
       by: ['costCentreId'],
       where: {
         operatorId,
@@ -60,7 +60,7 @@ export async function getSpendByCostCentre(
       },
       _sum: { totalAmount: true },
     }),
-    prisma.maintenanceRecord.groupBy({
+    (prisma.maintenanceRecord.groupBy as any)({
       by: ['costCentreId'],
       where: {
         operatorId,
@@ -70,7 +70,7 @@ export async function getSpendByCostCentre(
       },
       _sum: { cost: true },
     }),
-    prisma.repairJob.groupBy({
+    (prisma.repairJob.groupBy as any)({
       by: ['costCentreId'],
       where: {
         operatorId,
@@ -82,14 +82,14 @@ export async function getSpendByCostCentre(
     }),
   ]);
 
-  const fuelMap = new Map(fuelAgg.map((r) => [r.costCentreId ?? '', Number(r._sum.totalAmount ?? 0)]));
-  const maintenanceMap = new Map(maintenanceAgg.map((r) => [r.costCentreId ?? '', Number(r._sum.cost ?? 0)]));
-  const repairMap = new Map(repairAgg.map((r) => [r.costCentreId ?? '', Number(r._sum.totalCost ?? 0)]));
+  const fuelMap = new Map<string, number>(fuelAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.totalAmount ?? 0)]));
+  const maintenanceMap = new Map<string, number>(maintenanceAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.cost ?? 0)]));
+  const repairMap = new Map<string, number>(repairAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.totalCost ?? 0)]));
 
   return costCentres.map((cc) => {
-    const fuelSpend = fuelMap.get(cc.id) ?? 0;
-    const maintenanceSpend = maintenanceMap.get(cc.id) ?? 0;
-    const repairSpend = repairMap.get(cc.id) ?? 0;
+    const fuelSpend: number = fuelMap.get(cc.id) ?? 0;
+    const maintenanceSpend: number = maintenanceMap.get(cc.id) ?? 0;
+    const repairSpend: number = repairMap.get(cc.id) ?? 0;
     const totalSpend = fuelSpend + maintenanceSpend + repairSpend;
     const budget = cc.budget !== null ? Number(cc.budget) : null;
     const variance = budget !== null ? budget - totalSpend : null;

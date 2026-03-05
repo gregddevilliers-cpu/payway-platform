@@ -32,7 +32,7 @@ export function useTagSummary() {
     queryKey: tagKeys.summary(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<TagSummary>>('/tags/summary');
-      return res.data.data;
+      return res.data;
     },
   });
 }
@@ -41,8 +41,15 @@ export function useTags(params: TagListParams = {}) {
   return useQuery({
     queryKey: tagKeys.list(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<Tag[]>>('/tags', { params });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (params.status) qs.set('status', params.status);
+      if (params.vehicleId) qs.set('vehicleId', params.vehicleId);
+      if (params.search) qs.set('search', params.search);
+      if (params.page) qs.set('page', String(params.page));
+      if (params.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<Tag[]>>(`/tags${query ? `?${query}` : ''}`);
+      return res;
     },
   });
 }
@@ -52,7 +59,7 @@ export function useTag(id: string) {
     queryKey: tagKeys.detail(id),
     queryFn: async () => {
       const res = await api.get<ApiResponse<Tag>>(`/tags/${id}`);
-      return res.data.data;
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -63,7 +70,7 @@ export function useTagHistory(tagId: string) {
     queryKey: tagKeys.history(tagId),
     queryFn: async () => {
       const res = await api.get<ApiResponse<TagHistoryEntry[]>>(`/tags/${tagId}/history`);
-      return res.data.data;
+      return res.data;
     },
     enabled: Boolean(tagId),
   });
@@ -77,7 +84,7 @@ export function useCreateTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { tagNumber: string; expiryDate?: string; notes?: string }) =>
-      api.post<ApiResponse<Tag>>('/tags', data).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>('/tags', data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -86,7 +93,7 @@ export function useUpdateTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { notes?: string; expiryDate?: string }) =>
-      api.patch<ApiResponse<Tag>>(`/tags/${id}`, data).then((r) => r.data.data),
+      api.patch<ApiResponse<Tag>>(`/tags/${id}`, data).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tagKeys.detail(id) });
       qc.invalidateQueries({ queryKey: tagKeys.lists() });
@@ -106,7 +113,7 @@ export function useAssignTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (vehicleId: string) =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/assign`, { vehicleId }).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/assign`, { vehicleId }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -115,7 +122,7 @@ export function useUnassignTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reason?: string) =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/unassign`, { reason }).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/unassign`, { reason }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -124,7 +131,7 @@ export function useBlockTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reason: BlockedReason) =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/block`, { reason }).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/block`, { reason }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -133,7 +140,7 @@ export function useUnblockTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/unblock`).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/unblock`, {}).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -142,7 +149,7 @@ export function useReportLost(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/report-lost`).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/report-lost`, {}).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -154,7 +161,7 @@ export function useReplaceTag(id: string) {
       api.post<ApiResponse<{ oldTagId: string; newTagId: string; vehicleId: string | null }>>(
         `/tags/${id}/replace`,
         { newTagId },
-      ).then((r) => r.data.data),
+      ).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -163,7 +170,7 @@ export function useTransferTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (toVehicleId: string) =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/transfer`, { toVehicleId }).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/transfer`, { toVehicleId }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -172,7 +179,7 @@ export function useDecommissionTag(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      api.post<ApiResponse<Tag>>(`/tags/${id}/decommission`).then((r) => r.data.data),
+      api.post<ApiResponse<Tag>>(`/tags/${id}/decommission`, {}).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }
@@ -190,7 +197,7 @@ export function useBulkTagAction() {
           '/tags/bulk-action',
           payload,
         )
-        .then((r) => r.data.data),
+        .then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: tagKeys.all }),
   });
 }

@@ -16,8 +16,17 @@ export function useContracts(params?: ContractListParams) {
   return useQuery({
     queryKey: contractKeys.list(params),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<VehicleContract[]>>('/contracts', { params });
-      return res.data;
+      const qs = new URLSearchParams();
+      if (params?.vehicleId) qs.set('vehicleId', params.vehicleId);
+      if (params?.contractType) qs.set('contractType', params.contractType);
+      if (params?.status) qs.set('status', params.status);
+      if (params?.provider) qs.set('provider', params.provider);
+      if (params?.expiringDays) qs.set('expiringDays', String(params.expiringDays));
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      const res = await api.get<ApiResponse<VehicleContract[]>>(`/contracts${query ? `?${query}` : ''}`);
+      return res;
     },
   });
 }
@@ -27,7 +36,7 @@ export function useContract(id: string) {
     queryKey: contractKeys.detail(id),
     queryFn: async () => {
       const res = await api.get<ApiResponse<VehicleContract>>(`/contracts/${id}`);
-      return res.data.data;
+      return res.data;
     },
     enabled: !!id,
   });
@@ -40,7 +49,7 @@ export function useContractPayments(contractId: string) {
       const res = await api.get<{ success: boolean; data: ContractPayment[]; meta: { totalPaid: number } }>(
         `/contracts/${contractId}/payments`,
       );
-      return res.data;
+      return res;
     },
     enabled: !!contractId,
   });
@@ -50,8 +59,8 @@ export function useExpiringContracts(days = 30) {
   return useQuery({
     queryKey: contractKeys.expiring(days),
     queryFn: async () => {
-      const res = await api.get<ApiResponse<VehicleContract[]>>('/contracts/expiring', { params: { days } });
-      return res.data.data;
+      const res = await api.get<ApiResponse<VehicleContract[]>>(`/contracts/expiring?days=${days}`);
+      return res.data;
     },
   });
 }
@@ -61,7 +70,7 @@ export function useContractSummary() {
     queryKey: contractKeys.summary(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<ContractSummary>>('/contracts/summary');
-      return res.data.data;
+      return res.data;
     },
   });
 }
@@ -71,7 +80,7 @@ export function useCreateContract() {
   return useMutation({
     mutationFn: async (data: Partial<VehicleContract>) => {
       const res = await api.post<ApiResponse<VehicleContract>>('/contracts', data);
-      return res.data.data;
+      return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
   });
@@ -82,7 +91,7 @@ export function useUpdateContract() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<VehicleContract>) => {
       const res = await api.patch<ApiResponse<VehicleContract>>(`/contracts/${id}`, data);
-      return res.data.data;
+      return res.data;
     },
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
@@ -96,7 +105,7 @@ export function useTerminateContract() {
   return useMutation({
     mutationFn: async ({ id, terminationReason }: { id: string; terminationReason: string }) => {
       const res = await api.post<ApiResponse<VehicleContract>>(`/contracts/${id}/terminate`, { terminationReason });
-      return res.data.data;
+      return res.data;
     },
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
@@ -109,8 +118,8 @@ export function useRenewContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await api.post<ApiResponse<VehicleContract>>(`/contracts/${id}/renew`);
-      return res.data.data;
+      const res = await api.post<ApiResponse<VehicleContract>>(`/contracts/${id}/renew`, {});
+      return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
   });
@@ -135,7 +144,7 @@ export function useRecordPayment() {
         `/contracts/${contractId}/payments`,
         data,
       );
-      return res.data.data;
+      return res.data;
     },
     onSuccess: (_data, { contractId }) => {
       qc.invalidateQueries({ queryKey: contractKeys.payments(contractId) });

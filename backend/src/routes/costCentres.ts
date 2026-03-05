@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import prisma from '../lib/prisma';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/rbac';
 import { AppError } from '../middleware/errorHandler';
-import { logAudit } from '../services/auditService';
+import { logAction } from '../services/auditService';
 import {
   getSpendByCostCentre,
   getCostCentreHierarchy,
@@ -21,7 +22,7 @@ const ccWriteAccess = requireRole('super_admin', 'operator_admin');
 // ---------------------------------------------------------------------------
 router.get('/spend-summary', ccReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { dateFrom, dateTo } = req.query as Record<string, string>;
 
     const from = dateFrom ? new Date(dateFrom) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -39,7 +40,7 @@ router.get('/spend-summary', ccReadAccess, async (req: Request, res: Response, n
 // ---------------------------------------------------------------------------
 router.get('/', ccReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { format, isActive } = req.query as Record<string, string>;
 
     if (format === 'tree') {
@@ -73,8 +74,8 @@ router.get('/', ccReadAccess, async (req: Request, res: Response, next: NextFunc
 // ---------------------------------------------------------------------------
 router.post('/', ccWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { name, code, description, budget, budgetPeriod, parentId, isActive } = req.body as {
       name?: string;
       code?: string;
@@ -107,10 +108,14 @@ router.post('/', ccWriteAccess, async (req: Request, res: Response, next: NextFu
       },
     });
 
-    await logAudit(
-      { operatorId, userId, action: 'CREATE_COST_CENTRE', entityType: 'CostCentre', entityId: cc.id, changes: { name, code } },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'create',
+      entityType: 'cost_centre',
+      entityId: cc.id,
+      metadata: { name, code },
+    });
 
     res.status(201).json({ success: true, data: cc });
   } catch (err) {
@@ -123,7 +128,7 @@ router.post('/', ccWriteAccess, async (req: Request, res: Response, next: NextFu
 // ---------------------------------------------------------------------------
 router.get('/:id', ccReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
     const { dateFrom, dateTo } = req.query as Record<string, string>;
 
@@ -150,23 +155,23 @@ router.get('/:id', ccReadAccess, async (req: Request, res: Response, next: NextF
     const to = dateTo ? new Date(dateTo) : new Date();
 
     const [fuelAgg, maintAgg, repairAgg] = await Promise.all([
-      prisma.fuelTransaction.aggregate({
+      (prisma.fuelTransaction.aggregate as any)({
         where: { costCentreId: id, transactionDate: { gte: from, lte: to } },
         _sum: { totalAmount: true },
       }),
-      prisma.maintenanceRecord.aggregate({
+      (prisma.maintenanceRecord.aggregate as any)({
         where: { costCentreId: id, serviceDate: { gte: from, lte: to }, deletedAt: null },
         _sum: { cost: true },
       }),
-      prisma.repairJob.aggregate({
+      (prisma.repairJob.aggregate as any)({
         where: { costCentreId: id, createdAt: { gte: from, lte: to }, deletedAt: null },
         _sum: { totalCost: true },
       }),
     ]);
 
-    const fuelSpend = Number(fuelAgg._sum.totalAmount ?? 0);
-    const maintenanceSpend = Number(maintAgg._sum.cost ?? 0);
-    const repairSpend = Number(repairAgg._sum.totalCost ?? 0);
+    const fuelSpend = Number(fuelAgg._sum?.totalAmount ?? 0);
+    const maintenanceSpend = Number(maintAgg._sum?.cost ?? 0);
+    const repairSpend = Number(repairAgg._sum?.totalCost ?? 0);
     const totalSpend = fuelSpend + maintenanceSpend + repairSpend;
     const budget = cc.budget !== null ? Number(cc.budget) : null;
 
@@ -194,8 +199,8 @@ router.get('/:id', ccReadAccess, async (req: Request, res: Response, next: NextF
 // ---------------------------------------------------------------------------
 router.patch('/:id', ccWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { id } = req.params as { id: string };
 
     const existing = await prisma.costCentre.findFirst({ where: { id, operatorId, deletedAt: null } });
@@ -224,10 +229,14 @@ router.patch('/:id', ccWriteAccess, async (req: Request, res: Response, next: Ne
       },
     });
 
-    await logAudit(
-      { operatorId, userId, action: 'UPDATE_COST_CENTRE', entityType: 'CostCentre', entityId: id, changes: req.body },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'update',
+      entityType: 'cost_centre',
+      entityId: id,
+      metadata: req.body as Record<string, unknown>,
+    });
 
     res.json({ success: true, data: updated });
   } catch (err) {
@@ -240,8 +249,8 @@ router.patch('/:id', ccWriteAccess, async (req: Request, res: Response, next: Ne
 // ---------------------------------------------------------------------------
 router.delete('/:id', ccWriteAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
-    const userId = req.user!.userId;
+    const operatorId = req.user!.operatorId!;
+    const userId = req.user!.id;
     const { id } = req.params as { id: string };
 
     const cc = await prisma.costCentre.findFirst({
@@ -262,10 +271,13 @@ router.delete('/:id', ccWriteAccess, async (req: Request, res: Response, next: N
 
     await prisma.costCentre.update({ where: { id }, data: { deletedAt: new Date() } });
 
-    await logAudit(
-      { operatorId, userId, action: 'DELETE_COST_CENTRE', entityType: 'CostCentre', entityId: id },
-      prisma,
-    );
+    await logAction({
+      operatorId,
+      userId,
+      action: 'delete',
+      entityType: 'cost_centre',
+      entityId: id,
+    });
 
     res.json({ success: true, data: { message: 'Cost centre deleted' } });
   } catch (err) {
@@ -278,7 +290,7 @@ router.delete('/:id', ccWriteAccess, async (req: Request, res: Response, next: N
 // ---------------------------------------------------------------------------
 router.get('/:id/transactions', ccReadAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const operatorId = req.user!.operatorId;
+    const operatorId = req.user!.operatorId!;
     const { id } = req.params as { id: string };
     const { page = '1', limit = '50' } = req.query as Record<string, string>;
 
@@ -291,16 +303,16 @@ router.get('/:id/transactions', ccReadAccess, async (req: Request, res: Response
 
     const [transactions, total] = await prisma.$transaction([
       prisma.fuelTransaction.findMany({
-        where: { costCentreId: id },
+        where: { costCentreId: id } as any,
         include: {
-          Vehicle: { select: { registrationNumber: true, make: true, model: true } },
-          Driver: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { registrationNumber: true, make: true, model: true } },
+          driver: { select: { firstName: true, lastName: true } },
         },
         orderBy: { transactionDate: 'desc' },
         skip,
         take: limitNum,
       }),
-      prisma.fuelTransaction.count({ where: { costCentreId: id } }),
+      prisma.fuelTransaction.count({ where: { costCentreId: id } as any }),
     ]);
 
     res.json({
