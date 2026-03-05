@@ -8,50 +8,70 @@ datasource db {
 }
 
 model Operator {
-  id                 String    @id @default(uuid())
+  id                 String           @id @default(uuid())
   name               String
   tradingName        String?
-  registrationNumber String    @unique
+  registrationNumber String           @unique
   vatNumber          String?
   contactPerson      String
   contactEmail       String
   contactPhone       String
   physicalAddress    String
   region             String
-  status             String    @default("active")
+  status             String           @default("active")
   logoUrl            String?
   onboardedAt        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   deletedAt          DateTime?
 
-  fleets   Fleet[]
-  vehicles Vehicle[]
-  drivers  Driver[]
+  drivers              Driver[]
+  documents            Document[]
+  fleets               Fleet[]
+  importJobs           ImportJob[]
+  incidents            Incident[]
+  maintenanceRecords   MaintenanceRecord[]
+  maintenanceSchedules MaintenanceSchedule[]
+  repairJobs           RepairJob[]
+  repairProviders      RepairProvider[]
+  users                User[]
+  vehicles             Vehicle[]
+  wallet               Wallet?
+  auditLogs            AuditLog[]
+  tags                 Tag[]
+  tagHistories         TagHistory[]
+  costCentres          CostCentre[]
+  contracts            VehicleContract[]
+  contractPayments     ContractPayment[]
 }
-
 model Fleet {
-  id            String    @id @default(uuid())
-  operatorId    String
-  name          String
-  code          String?
-  contactPerson String?
-  contactPhone  String?
-  contactEmail  String?
-  region        String?
-  monthlyBudget Decimal?  @db.Decimal(12, 2)
-  status        String    @default("active")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  id              String            @id @default(uuid())
+  operatorId      String
+  name            String
+  code            String?
+  contactPerson   String?
+  contactPhone    String?
+  contactEmail    String?
+  region          String?
+  monthlyBudget   Decimal?          @db.Decimal(12, 2)
+  status          String            @default("active")
+  costCentreId    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
 
-  operator Operator  @relation(fields: [operatorId], references: [id])
-  vehicles Vehicle[]
-  drivers  Driver[]
+  operator             Operator              @relation(fields: [operatorId], references: [id])
+  costCentre           CostCentre?           @relation(fields: [costCentreId], references: [id])
+  drivers              Driver[]
+  fuelTransactions     FuelTransaction[]
+  incidents            Incident[]
+  maintenanceRecords   MaintenanceRecord[]
+  repairJobs           RepairJob[]
+  vehicles             Vehicle[]
 }
 
 model Vehicle {
-  id                 String    @id @default(uuid())
+  id                 String            @id @default(uuid())
   operatorId         String
   fleetId            String
   registrationNumber String
@@ -61,20 +81,32 @@ model Vehicle {
   year               Int
   colour             String?
   fuelType           String
-  tankCapacity       Decimal   @db.Decimal(6, 2)
+  tankCapacity       Decimal           @db.Decimal(6, 2)
   currentOdometer    Int?
-  status             String    @default("active")
-  tagStatus          String    @default("unassigned")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  status             String            @default("active")
+  tagStatus          String            @default("unassigned")
+  tagNumber          String?
+  costCentreId       String?
+  ownershipType      String?
+  leaseExpiry        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
   deletedAt          DateTime?
 
-  operator Operator @relation(fields: [operatorId], references: [id])
-  fleet    Fleet    @relation(fields: [fleetId], references: [id])
+  operator             Operator              @relation(fields: [operatorId], references: [id])
+  fleet                Fleet                 @relation(fields: [fleetId], references: [id])
+  costCentre           CostCentre?           @relation(fields: [costCentreId], references: [id])
+  fuelTransactions     FuelTransaction[]
+  incidents            Incident[]
+  maintenanceRecords   MaintenanceRecord[]
+  maintenanceSchedules MaintenanceSchedule[]
+  repairJobs           RepairJob[]
+  tags                 Tag[]
+  contracts            VehicleContract[]
 }
 
 model Driver {
-  id                String    @id @default(uuid())
+  id                String            @id @default(uuid())
   operatorId        String
   fleetId           String
   firstName         String
@@ -89,13 +121,488 @@ model Driver {
   licenceExpiry     DateTime?
   prdpNumber        String?
   prdpExpiry        DateTime?
-  status            String    @default("active")
-  dailySpendLimit   Decimal?  @db.Decimal(10, 2)
-  monthlySpendLimit Decimal?  @db.Decimal(10, 2)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  status            String            @default("active")
+  dailySpendLimit   Decimal?          @db.Decimal(10, 2)
+  monthlySpendLimit Decimal?          @db.Decimal(10, 2)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   deletedAt         DateTime?
 
+  operator         Operator          @relation(fields: [operatorId], references: [id])
+  fleet            Fleet             @relation(fields: [fleetId], references: [id])
+  fuelTransactions FuelTransaction[]
+  incidents        Incident[]
+  repairJobs       RepairJob[]
+}
+
+model User {
+  id           String         @id @default(uuid())
+  operatorId   String?
+  email        String         @unique
+  passwordHash String
+  role         String         @default("operator_admin")
+  firstName    String
+  lastName     String
+  mobileNumber String?
+  isActive     Boolean        @default(true)
+  status       String         @default("active")
+  lastLoginAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  operator      Operator?      @relation(fields: [operatorId], references: [id])
+  notifications Notification[]
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  operatorId  String
+  action      String
+  entityType  String
+  entityId    String
+  changes     Json?
+  description String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
   operator Operator @relation(fields: [operatorId], references: [id])
+
+  @@index([operatorId, entityType, entityId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model FuelTransaction {
+  id              String   @id @default(uuid())
+  operatorId      String
+  fleetId         String
+  vehicleId       String
+  driverId        String
+  transactionDate DateTime @default(now())
+  litresFilled    Decimal  @db.Decimal(8, 2)
+  pricePerLitre   Decimal  @db.Decimal(8, 4)
+  totalAmount     Decimal  @db.Decimal(10, 2)
+  fuelType        String
+  odometer        Int?
+  siteCode        String?
+  siteName        String?
+  status          String   @default("approved")
+  fuelEfficiency  Decimal? @db.Decimal(6, 2)
+  anomalyFlags    Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  driver  Driver  @relation(fields: [driverId], references: [id])
+  fleet   Fleet   @relation(fields: [fleetId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+}
+
+model ImportJob {
+  id             String      @id @default(uuid())
+  operatorId     String
+  uploadedBy     String
+  entityType     String
+  fileName       String
+  fileUrl        String?
+  columnMapping  Json        @default("{}")
+  totalRows      Int
+  importedCount  Int         @default(0)
+  skippedCount   Int         @default(0)
+  failedCount    Int         @default(0)
+  errorReportUrl String?
+  status         String      @default("pending")
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  operator   Operator    @relation(fields: [operatorId], references: [id])
+  importRows ImportRow[]
+}
+
+model ImportRow {
+  id                 String    @id @default(uuid())
+  importJobId        String
+  rowNumber          Int
+  rawData            Json
+  mappedData         Json      @default("{}")
+  validationErrors   Json?
+  validationWarnings Json?
+  duplicateOf        String?
+  resolution         String?
+  status             String    @default("pending")
+  createdAt          DateTime  @default(now())
+
+  importJob ImportJob @relation(fields: [importJobId], references: [id])
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String
+  operatorId String?
+  type       String
+  title      String
+  message    String
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+
+model RepairJob {
+  id                  String          @id @default(uuid())
+  operatorId          String
+  vehicleId           String
+  driverId            String?
+  fleetId             String
+  incidentId          String?
+  repairNumber        String          @unique
+  repairType          String
+  priority            String
+  status              String          @default("reported")
+  description         String
+  diagnosisNotes      String?
+  odometerAtReport    Int?
+  isDrivable          Boolean
+  breakdownLatitude   Decimal?        @db.Decimal(10, 7)
+  breakdownLongitude  Decimal?        @db.Decimal(10, 7)
+  providerId          String?
+  approvedQuoteId     String?
+  estimatedCompletion DateTime?
+  actualCompletion    DateTime?
+  totalCost           Decimal?        @db.Decimal(12, 2)
+  labourCost          Decimal?        @db.Decimal(10, 2)
+  partsCost           Decimal?        @db.Decimal(10, 2)
+  towingCost          Decimal?        @db.Decimal(10, 2)
+  vatAmount           Decimal?        @db.Decimal(10, 2)
+  warrantyMonths      Int?
+  warrantyExpiry      DateTime?
+  downtimeDays        Int?
+  cancellationReason  String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
+
+  driver         Driver?         @relation(fields: [driverId], references: [id])
+  fleet          Fleet           @relation(fields: [fleetId], references: [id])
+  operator       Operator        @relation(fields: [operatorId], references: [id])
+  repairProvider RepairProvider? @relation(fields: [providerId], references: [id])
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id])
+  repairQuotes   RepairQuote[]
+  workLogs       RepairWorkLog[]
+}
+
+model RepairProvider {
+  id              String        @id @default(uuid())
+  operatorId      String
+  name            String
+  contactPerson   String?
+  contactPhone    String
+  contactEmail    String?
+  address         String?
+  specialisations Json          @default("[]")
+  rating          Decimal?      @db.Decimal(3, 2)
+  status          String        @default("active")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  operator     Operator      @relation(fields: [operatorId], references: [id])
+  repairJobs   RepairJob[]
+  repairQuotes RepairQuote[]
+}
+
+model RepairQuote {
+  id             String         @id @default(uuid())
+  repairJobId    String
+  providerId     String
+  quoteNumber    String?
+  lineItems      Json           @default("[]")
+  labourTotal    Decimal        @db.Decimal(10, 2)
+  partsTotal     Decimal        @db.Decimal(10, 2)
+  totalExclVat   Decimal        @db.Decimal(12, 2)
+  vatAmount      Decimal        @db.Decimal(10, 2)
+  totalInclVat   Decimal        @db.Decimal(12, 2)
+  estimatedDays  Int?
+  warrantyMonths Int?
+  validUntil     DateTime?
+  documentUrl    String?
+  status         String         @default("pending")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  repairProvider RepairProvider @relation(fields: [providerId], references: [id])
+  repairJob      RepairJob      @relation(fields: [repairJobId], references: [id])
+}
+
+model RepairWorkLog {
+  id            String    @id @default(uuid())
+  repairJobId   String
+  userId        String
+  note          String
+  photosJson    Json?
+  partsReplaced Json?
+  createdAt     DateTime  @default(now())
+
+  repairJob RepairJob @relation(fields: [repairJobId], references: [id])
+}
+
+model Incident {
+  id                   String    @id @default(uuid())
+  operatorId           String
+  vehicleId            String
+  driverId             String?
+  fleetId              String
+  incidentNumber       String    @unique
+  incidentDate         DateTime
+  incidentType         String
+  description          String
+  location             String?
+  latitude             Decimal?  @db.Decimal(10, 7)
+  longitude            Decimal?  @db.Decimal(10, 7)
+  policeCaseNumber     String?
+  insuranceClaimNumber String?
+  claimStatus          String?
+  claimAmount          Decimal?  @db.Decimal(12, 2)
+  payoutAmount         Decimal?  @db.Decimal(12, 2)
+  costEstimate         Decimal?  @db.Decimal(12, 2)
+  downtimeStart        DateTime?
+  downtimeEnd          DateTime?
+  downtimeDays         Int?
+  thirdPartyInvolved   Boolean   @default(false)
+  thirdPartyDetails    String?
+  severity             String
+  status               String    @default("reported")
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+  driver   Driver?  @relation(fields: [driverId], references: [id])
   fleet    Fleet    @relation(fields: [fleetId], references: [id])
+}
+
+model MaintenanceRecord {
+  id                  String    @id @default(uuid())
+  operatorId          String
+  vehicleId           String
+  fleetId             String
+  maintenanceType     String
+  description         String
+  provider            String?
+  cost                Decimal?  @db.Decimal(12, 2)
+  vatAmount           Decimal?  @db.Decimal(10, 2)
+  odometer            Int?
+  serviceDate         DateTime
+  nextServiceDate     DateTime?
+  nextServiceOdometer Int?
+  isScheduled         Boolean   @default(false)
+  status              String    @default("completed")
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+  fleet    Fleet    @relation(fields: [fleetId], references: [id])
+}
+
+model MaintenanceSchedule {
+  id                  String    @id @default(uuid())
+  operatorId          String
+  vehicleId           String
+  maintenanceType     String
+  intervalMonths      Int?
+  intervalKm          Int?
+  lastServiceDate     DateTime?
+  lastServiceOdometer Int?
+  nextDueDate         DateTime?
+  nextDueOdometer     Int?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Document {
+  id           String    @id @default(uuid())
+  operatorId   String
+  entityType   String
+  entityId     String
+  documentType String
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+  uploadedBy   String
+  description  String?
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+
+  @@index([operatorId, entityType, entityId])
+}
+
+model Wallet {
+  id                  String              @id @default(uuid())
+  operatorId          String              @unique
+  balance             Decimal             @default(0) @db.Decimal(12, 2)
+  creditLimit         Decimal             @default(0) @db.Decimal(12, 2)
+  lowBalanceThreshold Decimal             @default(500) @db.Decimal(12, 2)
+  currency            String              @default("ZAR")
+  status              String              @default("active")
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  operator           Operator            @relation(fields: [operatorId], references: [id])
+  walletTransactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id            String   @id @default(uuid())
+  walletId      String
+  type          String
+  amount        Decimal  @db.Decimal(12, 2)
+  balanceBefore Decimal  @db.Decimal(12, 2)
+  balanceAfter  Decimal  @db.Decimal(12, 2)
+  reference     String?
+  description   String?
+  status        String   @default("completed")
+  processedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+}
+
+// ─── Tag Lifecycle ────────────────────────────────────────────────────────────
+
+model Tag {
+  id                  String    @id @default(uuid())
+  operatorId          String
+  tagNumber           String
+  vehicleId           String?
+  status              String    @default("unassigned")
+  blockedReason       String?
+  issuedDate          DateTime?
+  expiryDate          DateTime?
+  activatedAt         DateTime?
+  blockedAt           DateTime?
+  lastUsedAt          DateTime?
+  lastUsedForecourtId String?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  operator  Operator     @relation(fields: [operatorId], references: [id])
+  vehicle   Vehicle?     @relation(fields: [vehicleId], references: [id])
+  histories TagHistory[]
+
+  @@unique([operatorId, tagNumber])
+}
+
+model TagHistory {
+  id             String   @id @default(uuid())
+  tagId          String
+  operatorId     String
+  action         String
+  fromVehicleId  String?
+  toVehicleId    String?
+  previousStatus String?
+  newStatus      String
+  reason         String?
+  performedBy    String
+  createdAt      DateTime @default(now())
+
+  tag      Tag      @relation(fields: [tagId], references: [id])
+  operator Operator @relation(fields: [operatorId], references: [id])
+}
+
+// ─── Cost Centres ─────────────────────────────────────────────────────────────
+
+model CostCentre {
+  id           String    @id @default(uuid())
+  operatorId   String
+  name         String
+  code         String
+  description  String?
+  budget       Decimal?  @db.Decimal(12, 2)
+  budgetPeriod String?
+  parentId     String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  operator Operator     @relation(fields: [operatorId], references: [id])
+  parent   CostCentre?  @relation("CostCentreHierarchy", fields: [parentId], references: [id])
+  children CostCentre[] @relation("CostCentreHierarchy")
+  vehicles Vehicle[]
+  fleets   Fleet[]
+
+  @@unique([operatorId, code])
+}
+
+// ─── Vehicle Contracts ────────────────────────────────────────────────────────
+
+model VehicleContract {
+  id                 String    @id @default(uuid())
+  operatorId         String
+  vehicleId          String
+  contractType       String
+  provider           String
+  contractNumber     String?
+  startDate          DateTime
+  endDate            DateTime
+  monthlyAmount      Decimal?  @db.Decimal(12, 2)
+  totalContractValue Decimal?  @db.Decimal(14, 2)
+  depositPaid        Decimal?  @db.Decimal(12, 2)
+  residualValue      Decimal?  @db.Decimal(12, 2)
+  escalationRate     Decimal?  @db.Decimal(5, 2)
+  paymentDay         Int?
+  terms              String?
+  renewalType        String?
+  renewalNoticeDays  Int?
+  status             String    @default("active")
+  terminationReason  String?
+  terminationDate    DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  operator Operator          @relation(fields: [operatorId], references: [id])
+  vehicle  Vehicle           @relation(fields: [vehicleId], references: [id])
+  payments ContractPayment[]
+}
+
+model ContractPayment {
+  id            String   @id @default(uuid())
+  contractId    String
+  operatorId    String
+  paymentDate   DateTime
+  amount        Decimal  @db.Decimal(12, 2)
+  vatAmount     Decimal? @db.Decimal(10, 2)
+  paymentMethod String?
+  reference     String?
+  status        String   @default("completed")
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  contract VehicleContract @relation(fields: [contractId], references: [id])
+  operator Operator        @relation(fields: [operatorId], references: [id])
 }
