@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '../../lib/api';
+import { formatZAR } from '../../lib/utils';
 
 interface FuelTransaction {
   id: string;
@@ -39,12 +40,6 @@ function buildQs(f: Record<string, string>): string {
   for (const [k, v] of Object.entries(f)) if (v) p.set(k, v);
   const s = p.toString();
   return s ? `?${s}` : '';
-}
-
-function formatZAR(val: string | null | undefined): string {
-  if (!val) return '—';
-  const n = parseFloat(val);
-  return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function FuelTransactionsPage() {

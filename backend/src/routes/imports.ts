@@ -165,7 +165,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
   await prisma.importRow.createMany({ data: importRowData });
 
-  await auditLog(req, 'import', 'vehicle', importJob.id, undefined,
+  await auditLog(req, 'import', entityType, importJob.id, undefined,
     `Uploaded ${req.file.originalname} (${rows.length} rows, entity: ${entityType})`);
 
   // Return available target fields for the UI
@@ -732,7 +732,7 @@ router.post('/:id/execute', async (req: Request, res: Response): Promise<void> =
     },
   });
 
-  await auditLog(req, 'import', 'vehicle', job.id, undefined,
+  await auditLog(req, 'import', job.entityType as 'vehicle' | 'driver' | 'fleet' | 'tag', job.id, undefined,
     `Import executed: ${importedCount} imported, ${skippedCount} skipped, ${failedCount} failed`);
 
   await notify({

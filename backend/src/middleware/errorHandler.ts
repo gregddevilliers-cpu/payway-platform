@@ -19,7 +19,7 @@ export function errorHandler(
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
-      errors: [{ message: err.message }],
+      errors: [err.message],
     });
     return;
   }
@@ -28,7 +28,7 @@ export function errorHandler(
   if ((err as NodeJS.ErrnoException).code === 'P2002') {
     res.status(409).json({
       success: false,
-      errors: [{ message: 'A record with this value already exists' }],
+      errors: ['A record with this value already exists'],
     });
     return;
   }
@@ -37,7 +37,7 @@ export function errorHandler(
   if ((err as NodeJS.ErrnoException).code === 'P2025') {
     res.status(404).json({
       success: false,
-      errors: [{ message: 'Record not found' }],
+      errors: ['Record not found'],
     });
     return;
   }
@@ -45,6 +45,6 @@ export function errorHandler(
   console.error('[Unhandled Error]', err);
   res.status(500).json({
     success: false,
-    errors: [{ message: 'Internal server error' }],
+    errors: ['Internal server error'],
   });
 }

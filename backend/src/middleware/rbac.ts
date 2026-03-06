@@ -35,3 +35,13 @@ export function getOperatorScope(req: Request): string | undefined {
   }
   return req.user?.operatorId ?? undefined;
 }
+
+// For write/create operations where operatorId is mandatory.
+// Super Admin must specify operatorId via query param or request body.
+// Returns null if no scope can be determined (caller should return 403).
+export function requireOperatorScope(req: Request): string | null {
+  if (req.user?.role === ROLES.SUPER_ADMIN) {
+    return (req.query.operatorId as string) ?? (req.body?.operatorId as string) ?? null;
+  }
+  return req.user?.operatorId ?? null;
+}

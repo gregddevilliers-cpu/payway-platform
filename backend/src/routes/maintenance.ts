@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
-import { requireRole, ROLES, getOperatorScope } from '../middleware/rbac';
+import { requireRole, ROLES, getOperatorScope, requireOperatorScope } from '../middleware/rbac';
 import { ok, fail } from '../types/index';
 import { auditLog } from '../middleware/auditMiddleware';
 import { generateChanges } from '../services/auditService';
@@ -19,7 +19,8 @@ router.use(authenticate, requireRole(ROLES.SUPER_ADMIN, ROLES.OPERATOR_ADMIN, RO
 // ─── GET /api/v1/maintenance/due ─────────────────────────────────────────────
 // Must be registered before /:id to avoid route collision
 router.get('/due', async (req: Request, res: Response): Promise<void> => {
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
   const overdueOnly = req.query.overdueOnly === 'true';
   const daysAhead = parseInt(req.query.daysAhead as string ?? '30', 10);
 
@@ -75,7 +76,8 @@ router.post('/schedules', async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
 
   const schedule = await prisma.maintenanceSchedule.create({
     data: {

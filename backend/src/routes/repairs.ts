@@ -158,39 +158,41 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   // Check for active warranty
   const warrantyMatch = await checkWarrantyRecurrence(body.vehicleId, body.repairType, prisma);
 
-  const repairNumber = await generateRepairNumber(prisma);
-
-  const repair = await prisma.repairJob.create({
-    data: {
-      operatorId: vehicle.operatorId,
-      vehicleId: body.vehicleId,
-      driverId: body.driverId ?? null,
-      fleetId: vehicle.fleetId,
-      incidentId: body.incidentId ?? null,
-      repairNumber,
-      repairType: body.repairType,
-      priority: body.priority,
-      description: body.description,
-      isDrivable: body.isDrivable,
-      odometerAtReport: body.odometerAtReport ?? null,
-      breakdownLatitude: body.breakdownLatitude ?? null,
-      breakdownLongitude: body.breakdownLongitude ?? null,
-      estimatedCompletion: body.estimatedCompletion ? new Date(body.estimatedCompletion) : null,
-    },
-    include: {
-      vehicle: { select: { id: true, registrationNumber: true, make: true, model: true } },
-    },
+  // Wrap number generation + create in a transaction to prevent duplicate repair numbers
+  const repair = await prisma.$transaction(async (tx) => {
+    const repairNumber = await generateRepairNumber(tx);
+    return tx.repairJob.create({
+      data: {
+        operatorId: vehicle.operatorId,
+        vehicleId: body.vehicleId,
+        driverId: body.driverId ?? null,
+        fleetId: vehicle.fleetId,
+        incidentId: body.incidentId ?? null,
+        repairNumber,
+        repairType: body.repairType,
+        priority: body.priority,
+        description: body.description,
+        isDrivable: body.isDrivable,
+        odometerAtReport: body.odometerAtReport ?? null,
+        breakdownLatitude: body.breakdownLatitude ?? null,
+        breakdownLongitude: body.breakdownLongitude ?? null,
+        estimatedCompletion: body.estimatedCompletion ? new Date(body.estimatedCompletion) : null,
+      },
+      include: {
+        vehicle: { select: { id: true, registrationNumber: true, make: true, model: true } },
+      },
+    });
   });
 
   await auditLog(req, 'create', 'repair_job', repair.id, undefined,
-    `Logged repair ${repairNumber} for vehicle ${vehicle.registrationNumber}`);
+    `Logged repair ${repair.repairNumber} for vehicle ${vehicle.registrationNumber}`);
 
   await notify({
     operatorId: vehicle.operatorId,
     type: 'repair_reported',
     title: `New Repair Logged — ${vehicle.registrationNumber}`,
-    message: `${repairNumber}: ${body.repairType.replace(/_/g, ' ')} (${body.priority} priority) reported for ${vehicle.registrationNumber}.`,
-    metadata: { repairJobId: repair.id, repairNumber, vehicleId: body.vehicleId },
+    message: `${repair.repairNumber}: ${body.repairType.replace(/_/g, ' ')} (${body.priority} priority) reported for ${vehicle.registrationNumber}.`,
+    metadata: { repairJobId: repair.id, repairNumber: repair.repairNumber, vehicleId: body.vehicleId },
   }, prisma);
 
   res.status(201).json(ok({

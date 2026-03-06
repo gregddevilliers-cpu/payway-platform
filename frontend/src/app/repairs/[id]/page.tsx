@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
+import { formatZAR } from '../../../lib/utils';
 import { DocumentsPanel } from '../../../components/DocumentsPanel';
 
 interface LineItem { description: string; quantity: number; unitPrice: number; total: number }
@@ -89,12 +90,6 @@ const VALID_NEXT: Record<string, string[]> = {
   completed: [],
   cancelled: [],
 };
-
-function formatZAR(val: string | null | undefined): string {
-  if (!val) return '—';
-  const n = parseFloat(val);
-  return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (

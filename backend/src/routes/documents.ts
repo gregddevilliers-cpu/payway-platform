@@ -3,7 +3,7 @@ import multer from 'multer';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
-import { requireRole, ROLES, getOperatorScope } from '../middleware/rbac';
+import { requireRole, ROLES, getOperatorScope, requireOperatorScope } from '../middleware/rbac';
 import { ok, fail } from '../types/index';
 import { auditLog } from '../middleware/auditMiddleware';
 import { uploadFile, getFileStream } from '../services/fileStorageService';
@@ -55,7 +55,8 @@ router.post('/', upload.single('file'), async (req: Request, res: Response): Pro
     return;
   }
 
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
 
   let fileInfo: { filePath: string; fileUrl: string };
   try {

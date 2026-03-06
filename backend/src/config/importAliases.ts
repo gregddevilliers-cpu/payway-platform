@@ -49,21 +49,6 @@ export const VEHICLE_ALIASES: AliasMap = {
   fleetId: [
     'fleet', 'fleet id', 'fleet name', 'fleet group', 'fleet code', 'assigned fleet', 'fleet assignment',
   ],
-  insuranceExpiry: [
-    'insurance expiry', 'insurance expiry date', 'insurance date', 'insured until', 'policy expiry',
-    'insurance expires', 'policy expiry date', 'cover expiry',
-  ],
-  licenceExpiry: [
-    'licence expiry', 'license expiry', 'licence disk expiry', 'license disk expiry', 'vehicle licence',
-    'licence renewal', 'registration expiry', 'disc expiry',
-  ],
-  roadworthyExpiry: [
-    'roadworthy expiry', 'roadworthy date', 'roadworthy', 'roadworthy certificate', 'cow expiry',
-    'certificate of roadworthiness', 'rwc expiry', 'roadworthy cert',
-  ],
-  notes: [
-    'notes', 'comments', 'remarks', 'additional info', 'extra notes', 'description', 'info',
-  ],
 };
 
 export const DRIVER_ALIASES: AliasMap = {
@@ -100,9 +85,11 @@ export const DRIVER_ALIASES: AliasMap = {
     'prdp expiry', 'prdp', 'prdp date', 'professional driving permit', 'pdp expiry',
     'prdp expiry date', 'professional driver permit', 'prdp expires',
   ],
-  dateOfBirth: [
-    'date of birth', 'dob', 'birth date', 'birthday', 'd.o.b', 'birth', 'date of birth (dd/mm/yyyy)',
-    'born', 'birth day',
+  passportNumber: [
+    'passport', 'passport number', 'passport no', 'travel document', 'passport num',
+  ],
+  prdpNumber: [
+    'prdp number', 'prdp no', 'professional driving permit number', 'pdp number', 'permit number',
   ],
   fleetId: [
     'fleet', 'fleet id', 'fleet name', 'assigned fleet', 'fleet group', 'fleet code',
@@ -117,9 +104,6 @@ export const DRIVER_ALIASES: AliasMap = {
   monthlySpendLimit: [
     'monthly spend limit', 'monthly limit', 'monthly spending limit', 'max monthly spend',
     'monthly cap', 'per month limit',
-  ],
-  notes: [
-    'notes', 'comments', 'remarks', 'additional info', 'description', 'extra notes',
   ],
 };
 

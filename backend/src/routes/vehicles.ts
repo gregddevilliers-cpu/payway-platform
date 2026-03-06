@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
-import { requireRole, ROLES, getOperatorScope } from '../middleware/rbac';
+import { requireRole, ROLES, getOperatorScope, requireOperatorScope } from '../middleware/rbac';
 import { ok, fail } from '../types/index';
 import { auditLog } from '../middleware/auditMiddleware';
 
@@ -53,7 +53,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 // ─── POST /api/v1/vehicles ────────────────────────────────────────────────────
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
   const body = req.body as {
     fleetId: string; registrationNumber: string; vinNumber?: string; make: string; model: string;
     year: number; colour?: string; fuelType: string; tankCapacity: number;
@@ -79,7 +80,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /api/v1/vehicles/bulk-action ───────────────────────────────────────
 // Must be before /:id to avoid route collision
 router.post('/bulk-action', async (req: Request, res: Response): Promise<void> => {
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
   const { ids, action, payload } = req.body as { ids: string[]; action: string; payload?: Record<string, unknown> };
 
   if (!Array.isArray(ids) || ids.length === 0) {

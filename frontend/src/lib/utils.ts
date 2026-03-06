@@ -1,11 +1,13 @@
-/** Format a number as ZAR currency (e.g. "R 1 234.56") */
-export function formatZAR(amount: number | null | undefined): string {
+/** Format a number or numeric string as ZAR currency (e.g. "R 1 234.56") */
+export function formatZAR(amount: number | string | null | undefined): string {
   if (amount == null) return 'R –';
+  const n = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(n)) return 'R –';
   return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency: 'ZAR',
     minimumFractionDigits: 2,
-  }).format(amount);
+  }).format(n);
 }
 
 /** Format a date in SAST-friendly short form: "5 Mar 2026" */

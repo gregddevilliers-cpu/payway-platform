@@ -162,6 +162,9 @@ model Vehicle {
   contracts            VehicleContract[]
   equipment            VehicleEquipment[]
   handovers            VehicleHandover[]
+
+  @@index([operatorId, status])
+  @@index([operatorId, fleetId])
 }
 
 model VehicleEquipment {
@@ -209,6 +212,8 @@ model Driver {
   incidents        Incident[]
   repairJobs       RepairJob[]
   handovers        VehicleHandover[]
+
+  @@index([operatorId, fleetId])
 }
 
 model User {
@@ -298,6 +303,8 @@ model ImportJob {
 
   operator   Operator    @relation(fields: [operatorId], references: [id])
   importRows ImportRow[]
+
+  @@index([operatorId, status])
 }
 
 model ImportRow {
@@ -314,6 +321,9 @@ model ImportRow {
   createdAt          DateTime  @default(now())
 
   importJob ImportJob @relation(fields: [importJobId], references: [id])
+
+  @@index([importJobId, status])
+  @@index([importJobId, rowNumber])
 }
 
 model Notification {
@@ -373,6 +383,9 @@ model RepairJob {
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id])
   repairQuotes   RepairQuote[]
   workLogs       RepairWorkLog[]
+
+  @@index([operatorId, status])
+  @@index([operatorId, vehicleId])
 }
 
 model RepairProvider {

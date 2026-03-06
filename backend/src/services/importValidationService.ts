@@ -159,11 +159,12 @@ export async function detectDuplicate(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const SA_PHONE_RE = /^(\+27|0)[6-8]\d{8}$/;
+const SA_PHONE_RE = /^\+27[6-8]\d{8}$/;
 
 function normaliseMobile(value: string): string {
   const s = String(value).trim().replace(/[\s\-()]/g, '');
   if (s.startsWith('0')) return '+27' + s.slice(1);
+  if (/^27[6-8]/.test(s) && s.length === 11) return '+' + s;
   return s;
 }
 
@@ -286,7 +287,6 @@ export async function validateRow(
 
     // Date fields
     const dateFields: [string, string][] = [
-      ['dateOfBirth', 'Date of birth'],
       ['licenceExpiry', 'Licence expiry'],
       ['prdpExpiry', 'PrDP expiry'],
     ];

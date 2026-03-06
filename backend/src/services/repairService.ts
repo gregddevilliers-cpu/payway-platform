@@ -1,9 +1,12 @@
-import { PrismaClient, RepairJob } from '@prisma/client';
+import { PrismaClient, Prisma, RepairJob } from '@prisma/client';
+
+type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 /**
  * Generate next repair number in format REP-YYYYMM-NNNN.
+ * Accepts either a PrismaClient or a transaction client for atomicity.
  */
-export async function generateRepairNumber(prisma: PrismaClient): Promise<string> {
+export async function generateRepairNumber(prisma: PrismaClient | TransactionClient): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');

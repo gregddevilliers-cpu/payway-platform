@@ -151,16 +151,12 @@ export function inferFieldFromData(
 
   const hitRate = (re: RegExp) => sample.filter((v) => re.test(String(v).trim())).length / sample.length;
 
-  if (hitRate(SA_ID_RE) > 0.6) return entityType === 'driver' ? 'idNumber' : null;
-  if (hitRate(SA_PHONE_RE) > 0.5) return entityType === 'driver' ? 'mobile' : null;
+  if (hitRate(SA_ID_RE) > 0.6) return entityType === 'driver' ? 'saIdNumber' : null;
+  if (hitRate(SA_PHONE_RE) > 0.5) return entityType === 'driver' ? 'mobileNumber' : null;
   if (hitRate(EMAIL_RE) > 0.5) return 'email';
-  if (hitRate(VIN_RE) > 0.5) return entityType === 'vehicle' ? 'vin' : null;
+  if (hitRate(VIN_RE) > 0.5) return entityType === 'vehicle' ? 'vinNumber' : null;
   if (hitRate(SA_REG_RE) > 0.5) return entityType === 'vehicle' ? 'registrationNumber' : null;
-  if (hitRate(DATE_RE) > 0.6) {
-    // Could be DOB, expiry date, etc. — return a generic fallback depending on entity
-    if (entityType === 'driver') return 'dateOfBirth';
-    return null;
-  }
+  // Date patterns are ambiguous (could be licenceExpiry, prdpExpiry, etc.) — skip inference
 
   return null;
 }

@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
-import { requireRole, ROLES, getOperatorScope } from '../middleware/rbac';
+import { requireRole, ROLES, getOperatorScope, requireOperatorScope } from '../middleware/rbac';
 import { ok, fail } from '../types/index';
 import { AppError } from '../middleware/errorHandler';
 import { auditLog } from '../middleware/auditMiddleware';
@@ -74,7 +74,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 // ─── POST /api/v1/users ───────────────────────────────────────────
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const operatorId = getOperatorScope(req) ?? req.user!.operatorId!;
+  const operatorId = requireOperatorScope(req);
+  if (!operatorId) { res.status(403).json(fail('operatorId is required')); return; }
 
   const body = req.body as {
     firstName:     string;
