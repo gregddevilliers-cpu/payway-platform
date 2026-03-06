@@ -27,10 +27,10 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     ...(search
       ? {
           OR: [
-            { registrationNumber: { contains: search, mode: 'insensitive' } },
-            { make: { contains: search, mode: 'insensitive' } },
-            { model: { contains: search, mode: 'insensitive' } },
-            { vinNumber: { contains: search, mode: 'insensitive' } },
+            { registrationNumber: { contains: search } },
+            { make: { contains: search } },
+            { model: { contains: search } },
+            { vinNumber: { contains: search } },
           ],
         }
       : {}),

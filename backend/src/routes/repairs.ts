@@ -378,7 +378,7 @@ router.post('/:id/quotes', async (req: Request, res: Response): Promise<void> =>
       repairJobId: repair.id,
       providerId: body.providerId,
       quoteNumber: body.quoteNumber ?? null,
-      lineItems: body.lineItems as unknown as Prisma.InputJsonValue,
+      lineItems: JSON.stringify(body.lineItems),
       labourTotal: body.labourTotal,
       partsTotal: body.partsTotal,
       totalExclVat: body.totalExclVat,
@@ -495,8 +495,8 @@ router.post('/:id/work-log', async (req: Request, res: Response): Promise<void> 
       repairJobId: repair.id,
       userId: req.user!.id,
       note: body.note,
-      photosJson: body.photosJson ? (body.photosJson as unknown as Prisma.InputJsonValue) : undefined,
-      partsReplaced: body.partsReplaced ? (body.partsReplaced as unknown as Prisma.InputJsonValue) : undefined,
+      photosJson: body.photosJson ? JSON.stringify(body.photosJson) : undefined,
+      partsReplaced: body.partsReplaced ? JSON.stringify(body.partsReplaced) : undefined,
     },
   });
 

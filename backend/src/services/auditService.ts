@@ -43,11 +43,11 @@ export async function logAction(params: LogActionParams): Promise<void> {
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,
-        changes: params.changes as object ?? undefined,
+        changes: params.changes ? JSON.stringify(params.changes) : undefined,
         description: params.description,
         ipAddress: params.ipAddress,
         userAgent: params.userAgent,
-        metadata: params.metadata as object ?? undefined,
+        metadata: params.metadata ? JSON.stringify(params.metadata) : undefined,
       },
     });
   } catch (err) {

@@ -126,7 +126,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       siteCode: siteCode ?? null,
       siteName: siteName ?? null,
       fuelEfficiency: fuelEfficiency ?? undefined,
-      anomalyFlags: [],
+      anomalyFlags: '[]',
     },
     include: {
       vehicle: { select: { id: true, registrationNumber: true } },
@@ -134,8 +134,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
+  const txnWithRels = txn as typeof txn & { vehicle: { id: string; registrationNumber: string } };
   await auditLog(req, 'create', 'fuel_transaction', txn.id, undefined,
-    `Fuel transaction for vehicle ${txn.vehicle.registrationNumber}: ${litresFilled}L`);
+    `Fuel transaction for vehicle ${txnWithRels.vehicle.registrationNumber}: ${litresFilled}L`);
 
   // Run anomaly detection asynchronously (don't block response)
   detectAnomalies(
@@ -156,7 +157,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     if (flags.length > 0) {
       await prisma.fuelTransaction.update({
         where: { id: txn.id },
-        data: { anomalyFlags: flags as unknown as Prisma.InputJsonValue },
+        data: { anomalyFlags: JSON.stringify(flags) },
       });
     }
   }).catch((err: unknown) => console.error('[Anomaly Detection]', err));

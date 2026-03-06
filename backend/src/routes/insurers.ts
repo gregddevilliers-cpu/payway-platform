@@ -27,7 +27,7 @@ router.get('/', insurerReadAccess, async (req: Request, res: Response, next: Nex
       deletedAt: null,
       ...(status ? { status } : {}),
       ...(search
-        ? { companyName: { contains: search, mode: 'insensitive' as const } }
+        ? { companyName: { contains: search } }
         : {}),
     };
 

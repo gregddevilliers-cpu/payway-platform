@@ -25,8 +25,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     ...(search
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { contactPerson: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { contactPerson: { contains: search } },
           ],
         }
       : {}),
@@ -73,7 +73,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       contactPerson: body.contactPerson,
       contactEmail: body.contactEmail,
       address: body.address,
-      specialisations: (body.specialisations ?? []) as unknown as Prisma.InputJsonValue,
+      specialisations: JSON.stringify(body.specialisations ?? []),
     },
   });
 
@@ -127,7 +127,7 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
       ...(body.contactPerson !== undefined && { contactPerson: body.contactPerson }),
       ...(body.contactEmail !== undefined && { contactEmail: body.contactEmail }),
       ...(body.address !== undefined && { address: body.address }),
-      ...(body.specialisations !== undefined && { specialisations: body.specialisations as unknown as Prisma.InputJsonValue }),
+      ...(body.specialisations !== undefined && { specialisations: JSON.stringify(body.specialisations) }),
       ...(body.rating !== undefined && { rating: body.rating }),
       ...(body.status !== undefined && { status: body.status }),
     },
