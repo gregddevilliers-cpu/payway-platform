@@ -243,7 +243,7 @@ async function main() {
         siteCode: site.code,
         siteName: site.name,
         status: 'approved',
-        anomalyFlags: [],
+        anomalyFlags: '[]',
       },
     });
   }
@@ -323,7 +323,7 @@ async function main() {
       contactPhone: '+27114567890',
       contactEmail: 'mike@autobodypro.co.za',
       address: '123 Industrial Rd, Booysens, Johannesburg',
-      specialisations: ['panel_beating', 'spray_painting', 'mechanical'],
+      specialisations: JSON.stringify(['panel_beating', 'spray_painting', 'mechanical']),
       rating: 4.2,
       status: 'active',
     },
