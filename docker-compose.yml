@@ -1,17 +1,23 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: activefleet_db
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: activefleet_mssql
     environment:
-      POSTGRES_USER: activefleet
-      POSTGRES_PASSWORD: activefleet_local_password
-      POSTGRES_DB: activefleet_dev
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "ActiveFleet_Dev1!"
+      MSSQL_PID: "Developer"
     ports:
-      - "5432:5432"
+      - "1433:1433"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "ActiveFleet_Dev1!" -C -Q "SELECT 1" -b
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -20,4 +26,4 @@ services:
       - "6379:6379"
 
 volumes:
-  postgres_data:
+  mssql_data:

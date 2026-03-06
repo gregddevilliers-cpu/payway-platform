@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 export interface NotifyPayload {
   operatorId: string;
@@ -50,7 +50,7 @@ export async function notify(payload: NotifyPayload, prisma: PrismaClient): Prom
         type: payload.type,
         title: payload.title,
         message: payload.message,
-        metadata: (payload.metadata ?? {}) as unknown as Prisma.InputJsonValue,
+        metadata: JSON.stringify(payload.metadata ?? {}),
       })),
     });
   } catch (err) {

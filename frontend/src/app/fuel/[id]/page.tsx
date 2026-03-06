@@ -17,7 +17,7 @@ interface FuelTransaction {
   fuelEfficiency: string | null;
   siteCode: string | null;
   siteName: string | null;
-  anomalyFlags: string[];
+  anomalyFlags: Array<{ code: string; severity: string; description: string; resolvedAt?: string | null; resolution?: string | null }>;
   vehicle: { id: string; registrationNumber: string; make: string; model: string; tankCapacity: number | null };
   driver: { id: string; firstName: string; lastName: string } | null;
   fleet: { id: string; name: string } | null;
@@ -163,8 +163,8 @@ export default function FuelTransactionDetailPage({ params }: { params: Promise<
               <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                 <h2 className="mb-2 text-sm font-semibold text-red-700">Anomaly Flags</h2>
                 <ul className="space-y-1 text-sm text-red-600">
-                  {txn.anomalyFlags.map((flag: string) => (
-                    <li key={flag}>• {flag.replace(/_/g, ' ')}</li>
+                  {txn.anomalyFlags.map((flag) => (
+                    <li key={flag.code}>• <span className="font-medium">{flag.code.replace(/_/g, ' ')}</span> — {flag.description}</li>
                   ))}
                 </ul>
               </div>

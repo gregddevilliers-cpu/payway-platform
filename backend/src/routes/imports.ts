@@ -148,7 +148,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       uploadedBy: req.user!.id,
       entityType,
       fileName: req.file.originalname,
-      columnMapping: columnMapping as unknown as Prisma.InputJsonValue,
+      columnMapping: JSON.stringify(columnMapping),
       totalRows: rows.length,
       status: 'pending',
     },
@@ -158,8 +158,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
   const importRowData = rows.map((rawRow, i) => ({
     importJobId: importJob.id,
     rowNumber: i + 1,
-    rawData: rawRow as unknown as Prisma.InputJsonValue,
-    mappedData: applyMapping(rawRow, columnMapping) as unknown as Prisma.InputJsonValue,
+    rawData: JSON.stringify(rawRow),
+    mappedData: JSON.stringify(applyMapping(rawRow, columnMapping)),
     status: 'pending',
   }));
 
@@ -303,24 +303,25 @@ router.patch('/:id/mapping', async (req: Request, res: Response): Promise<void> 
   // Re-apply mapping to all rows
   const rows = await prisma.importRow.findMany({ where: { importJobId: job.id }, select: { id: true, rawData: true } });
 
-  const updates = rows.map((r) =>
-    prisma.importRow.update({
+  const updates = rows.map((r) => {
+    const raw = typeof r.rawData === 'string' ? JSON.parse(r.rawData) : r.rawData;
+    return prisma.importRow.update({
       where: { id: r.id },
       data: {
-        mappedData: applyMapping(r.rawData as Record<string, unknown>, newMapping) as unknown as Prisma.InputJsonValue,
+        mappedData: JSON.stringify(applyMapping(raw as Record<string, unknown>, newMapping)),
         status: 'pending',
-        validationErrors: Prisma.JsonNull,
-        validationWarnings: Prisma.JsonNull,
+        validationErrors: null,
+        validationWarnings: null,
       },
-    }),
-  );
+    });
+  });
 
   await Promise.all([
     ...updates,
     prisma.importJob.update({
       where: { id: job.id },
       data: {
-        columnMapping: newMapping as unknown as Prisma.InputJsonValue,
+        columnMapping: JSON.stringify(newMapping),
         status: 'pending',
       },
     }),
@@ -351,7 +352,7 @@ router.post('/:id/validate', async (req: Request, res: Response): Promise<void> 
   let duplicateCount = 0;
 
   for (const row of rows) {
-    const mappedData = row.mappedData as Record<string, unknown>;
+    const mappedData = typeof row.mappedData === 'string' ? JSON.parse(row.mappedData) : row.mappedData;
 
     const result = await validateRow(mappedData, job.entityType as EntityType, job.operatorId, prisma);
     const duplicateOf = await detectDuplicate(mappedData, job.entityType as EntityType, job.operatorId, prisma);
@@ -375,11 +376,11 @@ router.post('/:id/validate', async (req: Request, res: Response): Promise<void> 
     await prisma.importRow.update({
       where: { id: row.id },
       data: {
-        validationErrors: result.errors.length > 0 ? (result.errors as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
-        validationWarnings: result.warnings.length > 0 ? (result.warnings as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        validationErrors: result.errors.length > 0 ? JSON.stringify(result.errors) : null,
+        validationWarnings: result.warnings.length > 0 ? JSON.stringify(result.warnings) : null,
         duplicateOf: duplicateOf ?? null,
         status,
-        mappedData: mappedData as unknown as Prisma.InputJsonValue,
+        mappedData: JSON.stringify(mappedData),
       },
     });
   }
@@ -450,7 +451,8 @@ router.patch('/:id/rows/:rowNumber', async (req: Request, res: Response): Promis
     resolution?: string;
   };
 
-  const updatedData = mappedData ?? (row.mappedData as Record<string, unknown>);
+  const existingMapped = typeof row.mappedData === 'string' ? JSON.parse(row.mappedData) : row.mappedData;
+  const updatedData = mappedData ?? existingMapped;
 
   // Re-validate
   const result = await validateRow(updatedData, job.entityType as EntityType, job.operatorId, prisma);
@@ -470,9 +472,9 @@ router.patch('/:id/rows/:rowNumber', async (req: Request, res: Response): Promis
   const updated = await prisma.importRow.update({
     where: { id: row.id },
     data: {
-      mappedData: updatedData as unknown as Prisma.InputJsonValue,
-      validationErrors: result.errors.length > 0 ? (result.errors as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
-      validationWarnings: result.warnings.length > 0 ? (result.warnings as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+      mappedData: JSON.stringify(updatedData),
+      validationErrors: result.errors.length > 0 ? JSON.stringify(result.errors) : null,
+      validationWarnings: result.warnings.length > 0 ? JSON.stringify(result.warnings) : null,
       duplicateOf: duplicateOf ?? null,
       resolution: resolution ?? row.resolution,
       status,
@@ -512,7 +514,7 @@ router.post('/:id/execute', async (req: Request, res: Response): Promise<void> =
   const errors: { rowNumber: number; reason: string }[] = [];
 
   for (const row of rows) {
-    const data = row.mappedData as Record<string, unknown>;
+    const data = (typeof row.mappedData === 'string' ? JSON.parse(row.mappedData) : row.mappedData) as Record<string, unknown>;
 
     // Skip rows with resolution=skip
     if (row.resolution === 'skip' || row.status === 'error') {
@@ -702,7 +704,7 @@ router.post('/:id/execute', async (req: Request, res: Response): Promise<void> =
         where: { id: row.id },
         data: {
           status: 'error',
-          validationErrors: [reason] as unknown as Prisma.InputJsonValue,
+          validationErrors: JSON.stringify([reason]),
         },
       });
       failedCount++;

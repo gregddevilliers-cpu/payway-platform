@@ -62,7 +62,7 @@ router.get('/', tagAccess, async (req: Request, res: Response, next: NextFunctio
       deletedAt: null,
       ...(status ? { status } : {}),
       ...(vehicleId ? { vehicleId } : {}),
-      ...(search ? { tagNumber: { contains: search, mode: 'insensitive' as const } } : {}),
+      ...(search ? { tagNumber: { contains: search } } : {}),
     };
 
     const [tags, total] = await prisma.$transaction([
@@ -401,7 +401,7 @@ router.post('/export', tagAccess, async (req: Request, res: Response, next: Next
         deletedAt: null,
         ...(status ? { status } : {}),
         ...(vehicleId ? { vehicleId } : {}),
-        ...(search ? { tagNumber: { contains: search, mode: 'insensitive' as const } } : {}),
+        ...(search ? { tagNumber: { contains: search } } : {}),
       },
       include: {
         vehicle: { select: { registrationNumber: true, make: true, model: true } },

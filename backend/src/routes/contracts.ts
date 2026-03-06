@@ -140,7 +140,7 @@ router.get('/', contractReadAccess, async (req: Request, res: Response, next: Ne
       ...(vehicleId ? { vehicleId } : {}),
       ...(contractType ? { contractType } : {}),
       ...(status ? { status } : {}),
-      ...(provider ? { provider: { contains: provider, mode: 'insensitive' as const } } : {}),
+      ...(provider ? { provider: { contains: provider } } : {}),
       ...expiryFilter,
     };
 

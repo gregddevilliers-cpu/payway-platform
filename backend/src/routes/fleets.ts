@@ -23,8 +23,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     ...(search
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { code: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { code: { contains: search } },
           ],
         }
       : {}),

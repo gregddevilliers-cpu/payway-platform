@@ -257,6 +257,6 @@ export async function resolveAnomaly(
 
   await prisma.fuelTransaction.update({
     where: { id: transactionId },
-    data: { anomalyFlags: flags as unknown as import('@prisma/client').Prisma.InputJsonValue },
+    data: { anomalyFlags: JSON.stringify(flags) },
   });
 }

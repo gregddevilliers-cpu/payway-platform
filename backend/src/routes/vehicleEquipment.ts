@@ -81,13 +81,14 @@ router.post('/generate', equipmentWriteAccess, async (req: Request, res: Respons
     const newTypes = EQUIPMENT_TYPES.filter((t) => !existingTypes.has(t));
 
     if (newTypes.length > 0) {
+      // SQL Server doesn't support skipDuplicates in createMany
+      // We already filter out existing types above, so this is safe
       await prisma.vehicleEquipment.createMany({
         data: newTypes.map((equipmentType) => ({
           vehicleId,
           equipmentType,
           status: 'present',
         })),
-        skipDuplicates: true,
       });
     }
 

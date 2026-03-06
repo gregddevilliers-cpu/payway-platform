@@ -155,6 +155,34 @@ async function main() {
     vehicles.push(vehicle);
   }
 
+  const now = new Date();
+
+  // ── Vehicle Equipment ──────────────────────────────────
+  const equipmentTypes = [
+    { type: 'fire_extinguisher', expiry: true },
+    { type: 'first_aid_kit', expiry: true },
+    { type: 'spare_wheel', expiry: false },
+    { type: 'jack_and_wrench', expiry: false },
+    { type: 'warning_triangle', expiry: false },
+    { type: 'reflective_vest', expiry: false },
+  ];
+  for (const v of vehicles) {
+    for (const eq of equipmentTypes) {
+      const expiryDate = eq.expiry
+        ? new Date(now.getFullYear() + 1, Math.floor(Math.random() * 12), 15)
+        : null;
+      await prisma.vehicleEquipment.create({
+        data: {
+          vehicleId: v.id,
+          equipmentType: eq.type,
+          status: Math.random() > 0.1 ? 'present' : 'missing',
+          expiryDate,
+          lastChecked: new Date(now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
   // ── Drivers ─────────────────────────────────────────────
   const driverData = [
     { first: 'Bongani', last: 'Mthembu', mobile: '+27821001001', fleet: fleetSoweto, pin: '1234' },
@@ -190,8 +218,33 @@ async function main() {
     drivers.push(driver);
   }
 
+  // ── Insurers ────────────────────────────────────────────
+  const insurers = [];
+  const insurerData = [
+    { name: 'Outsurance', claimsPhone: '+27123461000', claimsEmail: 'claims@outsurance.co.za', generalPhone: '+27123461000', brokerName: 'Jabu Mkhize', brokerPhone: '+27829991122', brokerEmail: 'jabu@outsurance.co.za' },
+    { name: 'Santam Commercial', claimsPhone: '+27219158000', claimsEmail: 'claims@santam.co.za', generalPhone: '+27219158000', brokerName: 'Andre Potgieter', brokerPhone: '+27836543210', brokerEmail: 'andre@santam.co.za' },
+    { name: 'Hollard Transport', claimsPhone: '+27112514000', claimsEmail: 'transport.claims@hollard.co.za', generalPhone: '+27112514000', brokerName: null, brokerPhone: null, brokerEmail: null },
+  ];
+  for (const ins of insurerData) {
+    const insurer = await prisma.insurer.create({
+      data: {
+        operatorId: operator.id,
+        companyName: ins.name,
+        claimsPhone: ins.claimsPhone,
+        claimsEmail: ins.claimsEmail,
+        generalPhone: ins.generalPhone,
+        brokerName: ins.brokerName,
+        brokerPhone: ins.brokerPhone,
+        brokerEmail: ins.brokerEmail,
+        notes: `Primary insurer for taxi fleet operations`,
+        status: 'active',
+      },
+    });
+    insurers.push(insurer);
+  }
+
   // ── Wallet ──────────────────────────────────────────────
-  await prisma.wallet.create({
+  const wallet = await prisma.wallet.create({
     data: {
       operatorId: operator.id,
       balance: 185420.50,
@@ -211,7 +264,6 @@ async function main() {
     { code: 'CLT-JHB-01', name: 'Caltex Booysens' },
   ];
 
-  const now = new Date();
   for (let daysBack = 90; daysBack >= 0; daysBack -= Math.floor(Math.random() * 3) + 1) {
     const txDate = new Date(now);
     txDate.setDate(txDate.getDate() - daysBack);
@@ -243,7 +295,7 @@ async function main() {
         siteCode: site.code,
         siteName: site.name,
         status: 'approved',
-        anomalyFlags: [],
+        anomalyFlags: '[]',
       },
     });
   }
@@ -323,45 +375,161 @@ async function main() {
       contactPhone: '+27114567890',
       contactEmail: 'mike@autobodypro.co.za',
       address: '123 Industrial Rd, Booysens, Johannesburg',
-      specialisations: ['panel_beating', 'spray_painting', 'mechanical'],
+      specialisations: JSON.stringify(['panel_beating', 'spray_painting', 'mechanical']),
       rating: 4.2,
       status: 'active',
     },
   });
 
-  // ── Repair Jobs ─────────────────────────────────────────
-  const repairStatuses = ['reported', 'diagnosed', 'quoted', 'in_progress', 'completed'];
-  for (let i = 0; i < 6; i++) {
-    const v = vehicles[Math.floor(Math.random() * vehicles.length)];
-    const fleet = vehicleData.find((vd) => vd.reg === v.registrationNumber)!.fleet;
-    const status = repairStatuses[Math.floor(Math.random() * repairStatuses.length)];
-    const totalCost = 2000 + Math.random() * 15000;
+  // ── Repair Providers (additional) ───────────────────────
+  const repairProvider2 = await prisma.repairProvider.create({
+    data: {
+      operatorId: operator.id,
+      name: 'QuikFit Tyres & Mechanical',
+      contactPerson: 'Themba Ngwenya',
+      contactPhone: '+27117894560',
+      contactEmail: 'themba@quikfit.co.za',
+      address: '88 Main Reef Rd, Roodepoort',
+      specialisations: JSON.stringify(['tyres', 'brakes', 'suspension', 'alignment']),
+      rating: 4.5,
+      status: 'active',
+    },
+  });
 
-    await prisma.repairJob.create({
+  const repairProvider3 = await prisma.repairProvider.create({
+    data: {
+      operatorId: operator.id,
+      name: 'Sparky Auto Electrical',
+      contactPerson: 'Chris van der Merwe',
+      contactPhone: '+27124561230',
+      contactEmail: 'chris@sparkyauto.co.za',
+      address: '12 Pretoria Rd, Centurion',
+      specialisations: JSON.stringify(['electrical', 'alternators', 'starters', 'wiring']),
+      rating: 3.8,
+      status: 'active',
+    },
+  });
+
+  // ── Repair Jobs ─────────────────────────────────────────
+  const repairJobsData = [
+    { status: 'completed', desc: 'Engine overheating on long routes', type: 'mechanical', priority: 'high', drivable: false, provider: repairProvider, vIdx: 0 },
+    { status: 'in_progress', desc: 'Side panel dent from parking incident', type: 'body_panel', priority: 'medium', drivable: true, provider: repairProvider, vIdx: 2 },
+    { status: 'quoted', desc: 'Alternator not charging battery', type: 'electrical', priority: 'high', drivable: false, provider: repairProvider3, vIdx: 5 },
+    { status: 'reported', desc: 'Front brake pads worn below limit', type: 'mechanical', priority: 'critical', drivable: true, provider: repairProvider2, vIdx: 3 },
+    { status: 'completed', desc: 'Sliding door mechanism stuck', type: 'mechanical', priority: 'low', drivable: true, provider: repairProvider, vIdx: 7 },
+    { status: 'in_progress', desc: 'Exhaust system rattling', type: 'mechanical', priority: 'medium', drivable: true, provider: repairProvider2, vIdx: 8 },
+  ];
+
+  const repairJobs = [];
+  for (let i = 0; i < repairJobsData.length; i++) {
+    const rd = repairJobsData[i];
+    const v = vehicles[rd.vIdx];
+    const fleet = vehicleData.find((vd) => vd.reg === v.registrationNumber)!.fleet;
+    const totalCost = 2000 + Math.random() * 15000;
+    const daysBack = 30 + Math.floor(Math.random() * 60);
+    const createdDate = new Date(now);
+    createdDate.setDate(createdDate.getDate() - daysBack);
+
+    const repairJob = await prisma.repairJob.create({
       data: {
         operatorId: operator.id,
         vehicleId: v.id,
         fleetId: fleet.id,
         repairNumber: `RPR-${String(i + 1).padStart(4, '0')}`,
-        repairType: ['mechanical', 'body', 'electrical', 'tyre'][Math.floor(Math.random() * 4)],
-        priority: ['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)],
-        status,
-        description: [
-          'Engine overheating on long routes',
-          'Side panel dent from parking incident',
-          'Alternator not charging battery',
-          'Front brake pads worn below limit',
-          'Sliding door mechanism stuck',
-          'Exhaust system rattling',
-        ][i],
-        isDrivable: Math.random() > 0.3,
-        providerId: repairProvider.id,
-        totalCost: status === 'completed' ? Math.round(totalCost * 100) / 100 : null,
-        labourCost: status === 'completed' ? Math.round(totalCost * 0.4 * 100) / 100 : null,
-        partsCost: status === 'completed' ? Math.round(totalCost * 0.5 * 100) / 100 : null,
-        vatAmount: status === 'completed' ? Math.round(totalCost * 0.15 * 100) / 100 : null,
+        repairType: rd.type,
+        priority: rd.priority,
+        status: rd.status,
+        description: rd.desc,
+        isDrivable: rd.drivable,
+        providerId: rd.provider.id,
+        odometerAtReport: (v.currentOdometer ?? 50000) + Math.floor(Math.random() * 5000),
+        totalCost: rd.status === 'completed' ? Math.round(totalCost * 100) / 100 : null,
+        labourCost: rd.status === 'completed' ? Math.round(totalCost * 0.4 * 100) / 100 : null,
+        partsCost: rd.status === 'completed' ? Math.round(totalCost * 0.5 * 100) / 100 : null,
+        vatAmount: rd.status === 'completed' ? Math.round(totalCost * 0.15 * 100) / 100 : null,
+        actualCompletion: rd.status === 'completed' ? new Date(createdDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null,
+        downtimeDays: rd.status === 'completed' ? 7 : null,
+        warrantyMonths: rd.status === 'completed' ? 6 : null,
       },
     });
+    repairJobs.push(repairJob);
+  }
+
+  // ── Repair Quotes ─────────────────────────────────────
+  for (let i = 0; i < repairJobs.length; i++) {
+    const rj = repairJobs[i];
+    const rd = repairJobsData[i];
+    // Add quotes for jobs that are quoted, in_progress, or completed
+    if (['quoted', 'in_progress', 'completed'].includes(rd.status)) {
+      const labourTotal = 1500 + Math.random() * 5000;
+      const partsTotal = 800 + Math.random() * 8000;
+      const totalExcl = labourTotal + partsTotal;
+      const vat = totalExcl * 0.15;
+      const totalIncl = totalExcl + vat;
+
+      await prisma.repairQuote.create({
+        data: {
+          repairJobId: rj.id,
+          providerId: rd.provider.id,
+          quoteNumber: `QT-${String(i + 1).padStart(4, '0')}`,
+          lineItems: JSON.stringify([
+            { description: 'Diagnostic assessment', quantity: 1, unitPrice: 450, total: 450 },
+            { description: 'Labour — repair work', quantity: Math.ceil(labourTotal / 350), unitPrice: 350, total: Math.round(labourTotal) },
+            { description: 'Parts and materials', quantity: 1, unitPrice: Math.round(partsTotal), total: Math.round(partsTotal) },
+          ]),
+          labourTotal: Math.round(labourTotal * 100) / 100,
+          partsTotal: Math.round(partsTotal * 100) / 100,
+          totalExclVat: Math.round(totalExcl * 100) / 100,
+          vatAmount: Math.round(vat * 100) / 100,
+          totalInclVat: Math.round(totalIncl * 100) / 100,
+          estimatedDays: 3 + Math.floor(Math.random() * 7),
+          warrantyMonths: 6,
+          validUntil: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          status: rd.status === 'quoted' ? 'pending' : 'approved',
+        },
+      });
+    }
+  }
+
+  // ── Repair Work Logs ──────────────────────────────────
+  for (let i = 0; i < repairJobs.length; i++) {
+    const rj = repairJobs[i];
+    const rd = repairJobsData[i];
+    // Add work log entries for in_progress and completed jobs
+    if (['in_progress', 'completed'].includes(rd.status)) {
+      await prisma.repairWorkLog.create({
+        data: {
+          repairJobId: rj.id,
+          userId: adminUser.id,
+          note: 'Vehicle received and initial assessment completed. Damage documented.',
+          photosJson: JSON.stringify([]),
+          partsReplaced: JSON.stringify([]),
+        },
+      });
+      await prisma.repairWorkLog.create({
+        data: {
+          repairJobId: rj.id,
+          userId: fleetManagerUser.id,
+          note: 'Parts ordered from supplier. Expected delivery in 2 business days.',
+          photosJson: JSON.stringify([]),
+          partsReplaced: JSON.stringify([]),
+        },
+      });
+      if (rd.status === 'completed') {
+        await prisma.repairWorkLog.create({
+          data: {
+            repairJobId: rj.id,
+            userId: adminUser.id,
+            note: 'Repair completed. Quality check passed. Vehicle ready for collection.',
+            photosJson: JSON.stringify([]),
+            partsReplaced: JSON.stringify([
+              { partName: 'Gasket set', partNumber: 'TY-GS-2022', cost: 1250 },
+              { partName: 'Coolant 5L', partNumber: 'CLT-5000', cost: 380 },
+            ]),
+          },
+        });
+      }
+    }
   }
 
   // ── Incidents ───────────────────────────────────────────
@@ -445,9 +613,10 @@ async function main() {
   }
 
   // ── Tags ────────────────────────────────────────────────
+  const tags = [];
   for (let i = 0; i < 10; i++) {
     const tagNumber = `TAG-${String(i + 1).padStart(6, '0')}`;
-    await prisma.tag.create({
+    const tag = await prisma.tag.create({
       data: {
         operatorId: operator.id,
         tagNumber,
@@ -458,20 +627,176 @@ async function main() {
         activatedAt: i < vehicles.length ? new Date('2024-06-15') : null,
       },
     });
+    tags.push(tag);
+  }
+
+  // ── Tag History ───────────────────────────────────────
+  for (let i = 0; i < vehicles.length; i++) {
+    await prisma.tagHistory.create({
+      data: {
+        tagId: tags[i].id,
+        operatorId: operator.id,
+        action: 'assigned',
+        toVehicleId: vehicles[i].id,
+        previousStatus: 'unassigned',
+        newStatus: 'active',
+        reason: 'Initial tag assignment during fleet setup',
+        performedBy: adminUser.id,
+      },
+    });
+  }
+
+  // ── Wallet Transactions ───────────────────────────────
+  let balance = 0;
+  const walletTxData = [
+    { type: 'deposit', amount: 200000, desc: 'Initial wallet funding via EFT' },
+    { type: 'debit', amount: 8500, desc: 'Fuel top-up — Soweto Fleet' },
+    { type: 'debit', amount: 6200, desc: 'Fuel top-up — Pretoria Fleet' },
+    { type: 'deposit', amount: 50000, desc: 'Monthly funding — March' },
+    { type: 'debit', amount: 12400, desc: 'Fuel charges — week 1' },
+    { type: 'debit', amount: 9800, desc: 'Fuel charges — week 2' },
+    { type: 'debit', amount: 11200, desc: 'Fuel charges — week 3' },
+    { type: 'deposit', amount: 50000, desc: 'Monthly funding — April' },
+    { type: 'debit', amount: 15680, desc: 'Fuel charges — week 4' },
+    { type: 'refund', amount: 1200, desc: 'Duplicate charge reversal — Shell Chris Hani' },
+  ];
+  for (let i = 0; i < walletTxData.length; i++) {
+    const tx = walletTxData[i];
+    const balanceBefore = balance;
+    balance = tx.type === 'debit'
+      ? balance - tx.amount
+      : balance + tx.amount;
+    const txDate = new Date(now);
+    txDate.setDate(txDate.getDate() - (walletTxData.length - i) * 7);
+
+    await prisma.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        type: tx.type,
+        amount: tx.amount,
+        balanceBefore: Math.round(balanceBefore * 100) / 100,
+        balanceAfter: Math.round(balance * 100) / 100,
+        reference: `WTX-${String(i + 1).padStart(4, '0')}`,
+        description: tx.desc,
+        status: 'completed',
+      },
+    });
+  }
+
+  // ── Vehicle Handovers ─────────────────────────────────
+  for (let i = 0; i < 4; i++) {
+    const v = vehicles[i];
+    const d = drivers[i];
+    const fleet = i < 2 ? fleetSoweto : fleetPretoria;
+    const handoverDate = new Date(now);
+    handoverDate.setDate(handoverDate.getDate() - (30 - i * 7));
+
+    await prisma.vehicleHandover.create({
+      data: {
+        operatorId: operator.id,
+        vehicleId: v.id,
+        driverId: d.id,
+        fleetId: fleet.id,
+        handoverNumber: `HND-${String(i + 1).padStart(4, '0')}`,
+        handoverType: i % 2 === 0 ? 'check_out' : 'check_in',
+        handoverDatetime: handoverDate,
+        odometerReading: (v.currentOdometer ?? 50000) + i * 500,
+        fuelLevel: ['full', 'three_quarter', 'half', 'full'][i],
+        exteriorCondition: ['good', 'fair', 'good', 'excellent'][i],
+        interiorCondition: ['good', 'good', 'fair', 'good'][i],
+        damageNotes: i === 1 ? 'Small scratch on left rear panel — pre-existing' : null,
+        equipmentChecklist: JSON.stringify({
+          fire_extinguisher: true,
+          first_aid_kit: true,
+          spare_wheel: true,
+          jack: true,
+          warning_triangle: true,
+          reflective_vest: i !== 2,
+        }),
+        photos: JSON.stringify([]),
+        notes: i === 0 ? 'Driver briefed on new route schedule' : null,
+      },
+    });
+  }
+
+  // ── Notifications ─────────────────────────────────────
+  const notificationData = [
+    { userId: adminUser.id, type: 'repair_reported', title: 'New Repair Reported', message: `Repair RPR-0004 reported for GP 456-789 — Front brake pads worn below limit (Critical priority)`, metadata: { repairId: repairJobs[3]?.id, priority: 'critical' } },
+    { userId: adminUser.id, type: 'fuel_anomaly', title: 'Fuel Anomaly Detected', message: `Unusual fuel transaction for GP 345-678 — 95L fill exceeds 70L tank capacity`, metadata: { vehicleId: vehicles[2].id } },
+    { userId: fleetManagerUser.id, type: 'maintenance_due', title: 'Service Due Soon', message: `GP 890-123 oil service due in 500km or 7 days`, metadata: { vehicleId: vehicles[7].id, maintenanceType: 'oil_service' } },
+    { userId: adminUser.id, type: 'repair_completed', title: 'Repair Completed', message: `Repair RPR-0001 completed — Engine overheating fix for GP 123-456. Total cost: R 8,450.00`, metadata: { repairId: repairJobs[0]?.id } },
+    { userId: fleetManagerUser.id, type: 'contract_expiring', title: 'Contract Expiring', message: `Lease contract CTR-0001 for GP 123-456 expires in 60 days. Renewal action required.`, metadata: { contractNumber: 'CTR-0001' } },
+    { userId: adminUser.id, type: 'wallet_low', title: 'Low Wallet Balance', message: `Wallet balance R 185,420.50 is approaching the low balance threshold of R 10,000.00`, metadata: { balance: 185420.50, threshold: 10000 } },
+  ];
+  for (let i = 0; i < notificationData.length; i++) {
+    const n = notificationData[i];
+    await prisma.notification.create({
+      data: {
+        userId: n.userId,
+        operatorId: operator.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: i < 2,
+        readAt: i < 2 ? new Date(now.getTime() - i * 3600000) : null,
+        metadata: JSON.stringify(n.metadata),
+      },
+    });
+  }
+
+  // ── Documents ─────────────────────────────────────────
+  const docData = [
+    { entityType: 'vehicle', entityId: vehicles[0].id, docType: 'registration', fileName: 'GP123-456_registration.pdf', size: 245000 },
+    { entityType: 'vehicle', entityId: vehicles[0].id, docType: 'insurance_certificate', fileName: 'GP123-456_insurance.pdf', size: 180000 },
+    { entityType: 'vehicle', entityId: vehicles[1].id, docType: 'roadworthy', fileName: 'GP234-567_roadworthy.pdf', size: 312000 },
+    { entityType: 'driver', entityId: drivers[0].id, docType: 'licence', fileName: 'Bongani_Mthembu_licence.pdf', size: 156000 },
+    { entityType: 'driver', entityId: drivers[0].id, docType: 'prdp', fileName: 'Bongani_Mthembu_prdp.pdf', size: 98000 },
+    { entityType: 'driver', entityId: drivers[5].id, docType: 'licence', fileName: 'Samuel_Khumalo_licence.pdf', size: 145000 },
+    { entityType: 'fleet', entityId: fleetSoweto.id, docType: 'operating_licence', fileName: 'Soweto_Fleet_operating_licence.pdf', size: 520000 },
+    { entityType: 'fleet', entityId: fleetPretoria.id, docType: 'operating_licence', fileName: 'Pretoria_Fleet_operating_licence.pdf', size: 485000 },
+  ];
+  for (const doc of docData) {
+    await prisma.document.create({
+      data: {
+        operatorId: operator.id,
+        entityType: doc.entityType,
+        entityId: doc.entityId,
+        documentType: doc.docType,
+        fileName: doc.fileName,
+        fileUrl: `/uploads/${operator.id}/${doc.fileName}`,
+        fileSize: doc.size,
+        mimeType: 'application/pdf',
+        uploadedBy: adminUser.id,
+        description: `${doc.docType.replace(/_/g, ' ')} document`,
+      },
+    });
   }
 
   console.log('');
-  console.log('=== Seed complete! ===');
-  console.log('');
-  console.log('Login credentials:');
-  console.log('  Admin:         admin@gthtransport.co.za  /  Demo1234!');
-  console.log('  Fleet Manager: thabo@gthtransport.co.za  /  Demo1234!');
-  console.log('');
-  console.log('Data created:');
-  console.log(`  1 operator, 2 users, 2 fleets, 3 cost centres`);
-  console.log(`  ${vehicles.length} vehicles, ${drivers.length} drivers`);
-  console.log(`  ~35 fuel transactions, 15 maintenance records, 50 maintenance schedules`);
-  console.log(`  6 repair jobs, 4 incidents, 4 contracts, 10 tags`);
+  console.log('╔══════════════════════════════════════════════════════════╗');
+  console.log('║           ACTIVE FLEET — Demo Seed Complete             ║');
+  console.log('╠══════════════════════════════════════════════════════════╣');
+  console.log('║                                                        ║');
+  console.log('║  Login credentials:                                    ║');
+  console.log('║    Admin:         admin@gthtransport.co.za             ║');
+  console.log('║    Fleet Manager: thabo@gthtransport.co.za             ║');
+  console.log('║    Password:      Demo1234!                            ║');
+  console.log('║                                                        ║');
+  console.log('╠══════════════════════════════════════════════════════════╣');
+  console.log('║  Data created:                                         ║');
+  console.log(`║    1 operator, 2 users, 3 cost centres                 ║`);
+  console.log(`║    2 fleets, ${vehicles.length} vehicles, ${drivers.length} drivers                    ║`);
+  console.log(`║    ${equipmentTypes.length * vehicles.length} vehicle equipment items                     ║`);
+  console.log(`║    3 insurers, 1 wallet, 10 wallet transactions        ║`);
+  console.log(`║    ~35 fuel transactions, 15 maintenance records       ║`);
+  console.log(`║    50 maintenance schedules                            ║`);
+  console.log(`║    3 repair providers, 6 repair jobs, quotes & logs    ║`);
+  console.log(`║    4 incidents, 4 contracts with payments              ║`);
+  console.log(`║    10 tags with history, 4 vehicle handovers           ║`);
+  console.log(`║    6 notifications, 8 documents                        ║`);
+  console.log('║                                                        ║');
+  console.log('║  All 28 tables populated with realistic SA demo data   ║');
+  console.log('╚══════════════════════════════════════════════════════════╝');
 }
 
 main()

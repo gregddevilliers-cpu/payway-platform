@@ -150,10 +150,10 @@ router.post('/', handoverWriteAccess, async (req: Request, res: Response, next: 
         exteriorCondition: exteriorCondition ?? null,
         interiorCondition: interiorCondition ?? null,
         damageNotes: damageNotes ?? null,
-        equipmentChecklist: equipmentChecklist ?? undefined,
+        equipmentChecklist: equipmentChecklist ? JSON.stringify(equipmentChecklist) : undefined,
         driverSignature: driverSignature ?? null,
         managerSignature: managerSignature ?? null,
-        photos: photos ?? undefined,
+        photos: photos ? JSON.stringify(photos) : undefined,
         notes: notes ?? null,
         latitude: latitude ?? null,
         longitude: longitude ?? null,
@@ -259,10 +259,10 @@ router.patch('/:id', handoverWriteAccess, async (req: Request, res: Response, ne
     if (exteriorCondition !== undefined) updateData.exteriorCondition = exteriorCondition;
     if (interiorCondition !== undefined) updateData.interiorCondition = interiorCondition;
     if (damageNotes !== undefined) updateData.damageNotes = damageNotes;
-    if (equipmentChecklist !== undefined) updateData.equipmentChecklist = equipmentChecklist;
+    if (equipmentChecklist !== undefined) updateData.equipmentChecklist = equipmentChecklist ? JSON.stringify(equipmentChecklist) : null;
     if (driverSignature !== undefined) updateData.driverSignature = driverSignature;
     if (managerSignature !== undefined) updateData.managerSignature = managerSignature;
-    if (photos !== undefined) updateData.photos = photos;
+    if (photos !== undefined) updateData.photos = photos ? JSON.stringify(photos) : null;
     if (notes !== undefined) updateData.notes = notes;
     if (latitude !== undefined) updateData.latitude = latitude;
     if (longitude !== undefined) updateData.longitude = longitude;
