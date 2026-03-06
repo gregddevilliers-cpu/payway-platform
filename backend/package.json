@@ -33,6 +33,9 @@
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
