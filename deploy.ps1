@@ -58,7 +58,9 @@ if ($needsNewEnv) {
     }
     if (-not $JwtSecret) {
         $bytes = New-Object byte[] 48
-        [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+        $rng.GetBytes($bytes)
+        $rng.Dispose()
         $JwtSecret = [Convert]::ToBase64String($bytes)
     }
 
