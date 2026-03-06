@@ -37,7 +37,7 @@
     "xlsx": "^0.18.5"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

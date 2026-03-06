@@ -109,12 +109,18 @@ docker compose -f docker-compose.prod.yml up -d
 
 # ─── 4. Wait for MSSQL to be healthy ────────────────────────────────────────
 Write-Step "Waiting for MSSQL to become healthy..."
-$maxAttempts = 30
+$maxAttempts = 36
 $attempt = 0
+$health = ""
 do {
     Start-Sleep -Seconds 5
     $attempt++
-    $health = docker inspect --format='{{.State.Health.Status}}' (docker compose -f docker-compose.prod.yml ps -q mssql) 2>$null
+    $containerId = docker compose -f docker-compose.prod.yml ps -q mssql 2>$null
+    if ($containerId) {
+        $health = docker inspect --format='{{.State.Health.Status}}' $containerId 2>$null
+    } else {
+        $health = "starting"
+    }
     Write-Host "   Attempt $attempt/$maxAttempts — status: $health" -ForegroundColor Gray
 } while ($health -ne "healthy" -and $attempt -lt $maxAttempts)
 
