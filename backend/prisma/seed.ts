@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding PayWay demo data...');
+  console.log('Seeding Active Fleet demo data...');
 
   // ── Operator ────────────────────────────────────────────
   const operator = await prisma.operator.create({
@@ -278,6 +278,42 @@ async function main() {
     });
   }
 
+  // ── Maintenance Schedules ───────────────────────────────
+  const scheduleTypes = [
+    { type: 'oil_service', months: 3, km: 10000, label: 'Oil & filter service' },
+    { type: 'general_service', months: 6, km: 20000, label: 'Full general service' },
+    { type: 'tyre_replacement', months: 12, km: 40000, label: 'Tyre replacement' },
+    { type: 'brake_service', months: 6, km: 25000, label: 'Brake pad & disc check' },
+    { type: 'wheel_alignment', months: 6, km: 15000, label: 'Wheel alignment & balancing' },
+  ];
+
+  for (const v of vehicles) {
+    const baseOdo = v.currentOdometer ?? 50000;
+    for (const sched of scheduleTypes) {
+      const lastDate = new Date(now);
+      lastDate.setMonth(lastDate.getMonth() - Math.floor(Math.random() * sched.months));
+      const nextDate = new Date(lastDate);
+      nextDate.setMonth(nextDate.getMonth() + sched.months);
+      const lastOdo = baseOdo - Math.floor(Math.random() * sched.km * 0.5);
+      const nextOdo = lastOdo + sched.km;
+
+      await prisma.maintenanceSchedule.create({
+        data: {
+          operatorId: operator.id,
+          vehicleId: v.id,
+          maintenanceType: sched.type,
+          intervalMonths: sched.months,
+          intervalKm: sched.km,
+          lastServiceDate: lastDate,
+          lastServiceOdometer: lastOdo,
+          nextDueDate: nextDate,
+          nextDueOdometer: nextOdo,
+          isActive: true,
+        },
+      });
+    }
+  }
+
   // ── Repair Provider ─────────────────────────────────────
   const repairProvider = await prisma.repairProvider.create({
     data: {
@@ -434,7 +470,7 @@ async function main() {
   console.log('Data created:');
   console.log(`  1 operator, 2 users, 2 fleets, 3 cost centres`);
   console.log(`  ${vehicles.length} vehicles, ${drivers.length} drivers`);
-  console.log(`  ~35 fuel transactions, 15 maintenance records`);
+  console.log(`  ~35 fuel transactions, 15 maintenance records, 50 maintenance schedules`);
   console.log(`  6 repair jobs, 4 incidents, 4 contracts, 10 tags`);
 }
 

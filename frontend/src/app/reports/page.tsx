@@ -12,7 +12,6 @@ const REPORTS = [
   { type: 'anomaly-report', name: 'Anomaly Report', description: 'Flagged transactions grouped by anomaly type with resolution rates.', icon: '⚠️' },
   { type: 'forecourt-analysis', name: 'Forecourt Analysis', description: 'Spend by fuel station — average price/litre and transaction volume.', icon: '🏪' },
   { type: 'cost-allocation', name: 'Cost Allocation', description: 'Fuel and maintenance costs allocated by fleet for accounting purposes.', icon: '🧾' },
-  { type: 'environmental', name: 'Environmental', description: 'CO₂ emissions estimate by fleet/vehicle using standard emission factors.', icon: '🌱' },
 ];
 
 export default function ReportsPage() {

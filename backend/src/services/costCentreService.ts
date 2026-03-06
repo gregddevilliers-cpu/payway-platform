@@ -50,41 +50,48 @@ export async function getSpendByCostCentre(
 
   if (costCentres.length === 0) return [];
 
-  const [fuelAgg, maintenanceAgg, repairAgg] = await Promise.all([
-    (prisma.fuelTransaction.groupBy as any)({
-      by: ['costCentreId'],
-      where: {
-        operatorId,
-        transactionDate: { gte: dateFrom, lte: dateTo },
-        costCentreId: { not: null },
-      },
-      _sum: { totalAmount: true },
-    }),
-    (prisma.maintenanceRecord.groupBy as any)({
-      by: ['costCentreId'],
-      where: {
-        operatorId,
-        serviceDate: { gte: dateFrom, lte: dateTo },
-        deletedAt: null,
-        costCentreId: { not: null },
-      },
-      _sum: { cost: true },
-    }),
-    (prisma.repairJob.groupBy as any)({
-      by: ['costCentreId'],
-      where: {
-        operatorId,
-        createdAt: { gte: dateFrom, lte: dateTo },
-        deletedAt: null,
-        costCentreId: { not: null },
-      },
-      _sum: { totalCost: true },
-    }),
-  ]);
+  // Build a map of costCentreId → vehicleIds (join through Vehicle)
+  const vehicles = await prisma.vehicle.findMany({
+    where: { operatorId, deletedAt: null, costCentreId: { not: null } },
+    select: { id: true, costCentreId: true },
+  });
 
-  const fuelMap = new Map<string, number>(fuelAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.totalAmount ?? 0)]));
-  const maintenanceMap = new Map<string, number>(maintenanceAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.cost ?? 0)]));
-  const repairMap = new Map<string, number>(repairAgg.map((r: any) => [r.costCentreId ?? '', Number(r._sum?.totalCost ?? 0)]));
+  const ccVehicleMap = new Map<string, string[]>();
+  for (const v of vehicles) {
+    if (!v.costCentreId) continue;
+    const arr = ccVehicleMap.get(v.costCentreId) ?? [];
+    arr.push(v.id);
+    ccVehicleMap.set(v.costCentreId, arr);
+  }
+
+  // Aggregate spend per cost centre by joining through vehicle IDs
+  const fuelMap = new Map<string, number>();
+  const maintenanceMap = new Map<string, number>();
+  const repairMap = new Map<string, number>();
+
+  for (const cc of costCentres) {
+    const vIds = ccVehicleMap.get(cc.id) ?? [];
+    if (vIds.length === 0) continue;
+
+    const [fuelAgg, maintAgg, repairAgg] = await Promise.all([
+      prisma.fuelTransaction.aggregate({
+        where: { vehicleId: { in: vIds }, transactionDate: { gte: dateFrom, lte: dateTo } },
+        _sum: { totalAmount: true },
+      }),
+      prisma.maintenanceRecord.aggregate({
+        where: { vehicleId: { in: vIds }, serviceDate: { gte: dateFrom, lte: dateTo }, deletedAt: null },
+        _sum: { cost: true },
+      }),
+      prisma.repairJob.aggregate({
+        where: { vehicleId: { in: vIds }, createdAt: { gte: dateFrom, lte: dateTo }, deletedAt: null },
+        _sum: { totalCost: true },
+      }),
+    ]);
+
+    fuelMap.set(cc.id, Number(fuelAgg._sum?.totalAmount ?? 0));
+    maintenanceMap.set(cc.id, Number(maintAgg._sum?.cost ?? 0));
+    repairMap.set(cc.id, Number(repairAgg._sum?.totalCost ?? 0));
+  }
 
   return costCentres.map((cc) => {
     const fuelSpend: number = fuelMap.get(cc.id) ?? 0;

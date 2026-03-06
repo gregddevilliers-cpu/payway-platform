@@ -93,7 +93,7 @@ export function exportToPdfHtml(
   <thead><tr>${headerRow}</tr></thead>
   <tbody>${dataRows}</tbody>
 </table>
-<p style="font-size:11px;color:#9ca3af;margin-top:20px">Page 1 of 1 &nbsp;·&nbsp; PayWay Fleet Management</p>
+<p style="font-size:11px;color:#9ca3af;margin-top:20px">Page 1 of 1 &nbsp;·&nbsp; Active Fleet</p>
 </body>
 </html>`;
 }

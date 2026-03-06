@@ -120,6 +120,26 @@ export default function IncidentDetailPage() {
             <span className={`inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOURS[inc.status] ?? 'bg-gray-100'}`}>
               {inc.status.replace(/_/g, ' ')}
             </span>
+            <span className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+                  const token = localStorage.getItem('auth_token') ?? '';
+                  window.open(`${apiBase}/incidents/${id}/export-pdf?_token=${token}`, '_blank');
+                }}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Export PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Print
+              </button>
+            </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
             {inc.vehicle.registrationNumber} — {new Date(inc.incidentDate).toLocaleString('en-ZA')}

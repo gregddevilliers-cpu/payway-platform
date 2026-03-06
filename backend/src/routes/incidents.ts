@@ -10,6 +10,7 @@ import {
   generateIncidentNumber,
   calculateDowntimeDays,
 } from '../services/incidentService';
+import { generateIncidentPdf, IncidentData } from '../services/incidentPdfService';
 
 const router = Router();
 
@@ -214,6 +215,60 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     `Logged incident ${incidentNumber} for vehicle ${vehicle.registrationNumber}`);
 
   res.status(201).json(ok(incident));
+});
+
+// ─── GET /api/v1/incidents/:id/export-pdf ────────────────────────────────────
+router.get('/:id/export-pdf', async (req: Request, res: Response): Promise<void> => {
+  const operatorId = getOperatorScope(req);
+  const where: Prisma.IncidentWhereInput = {
+    id: req.params.id as string,
+    deletedAt: null,
+    ...(operatorId ? { operatorId } : {}),
+  };
+
+  const incident = await prisma.incident.findFirst({
+    where,
+    include: {
+      vehicle: { select: { registrationNumber: true, make: true, model: true } },
+      driver: { select: { firstName: true, lastName: true } },
+      fleet: { select: { name: true } },
+    },
+  });
+
+  if (!incident) { res.status(404).json(fail('Incident not found')); return; }
+
+  const pdfData: IncidentData = {
+    incidentNumber: incident.incidentNumber,
+    incidentDate: incident.incidentDate.toISOString(),
+    incidentType: incident.incidentType,
+    severity: incident.severity,
+    status: incident.status,
+    description: incident.description,
+    location: incident.location,
+    policeCaseNumber: incident.policeCaseNumber,
+    insuranceClaimNumber: incident.insuranceClaimNumber,
+    claimStatus: incident.claimStatus,
+    claimAmount: incident.claimAmount ? String(incident.claimAmount) : null,
+    payoutAmount: incident.payoutAmount ? String(incident.payoutAmount) : null,
+    costEstimate: incident.costEstimate ? String(incident.costEstimate) : null,
+    downtimeStart: incident.downtimeStart?.toISOString() ?? null,
+    downtimeEnd: incident.downtimeEnd?.toISOString() ?? null,
+    downtimeDays: incident.downtimeDays,
+    thirdPartyInvolved: incident.thirdPartyInvolved,
+    thirdPartyDetails: incident.thirdPartyDetails,
+    notes: incident.notes,
+    createdAt: incident.createdAt.toISOString(),
+    vehicle: incident.vehicle,
+    driver: incident.driver,
+    fleet: incident.fleet,
+  };
+
+  const doc = generateIncidentPdf(pdfData);
+  const filename = `${incident.incidentNumber}.pdf`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  doc.pipe(res);
 });
 
 // ─── GET /api/v1/incidents/:id ───────────────────────────────────────────────

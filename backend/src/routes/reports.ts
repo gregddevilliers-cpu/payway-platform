@@ -78,12 +78,6 @@ const COLUMNS: Record<string, ExportColumn[]> = {
     { key: 'maintenanceCost', header: 'Maint. Cost (R)', width: 16 },
     { key: 'totalCost', header: 'Total Cost (R)', width: 14 },
   ],
-  'environmental': [
-    { key: 'label', header: 'Fleet / Vehicle', width: 20 },
-    { key: 'totalLitres', header: 'Total Litres', width: 13 },
-    { key: 'totalCo2kg', header: 'CO₂ (kg)', width: 12 },
-    { key: 'co2PerKm', header: 'CO₂/km (kg)', width: 14 },
-  ],
 };
 
 // ─── GET /api/v1/reports/:type ────────────────────────────────────────────────

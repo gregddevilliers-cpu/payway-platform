@@ -521,7 +521,7 @@ export async function environmental(
 export const REPORT_TYPES = [
   'fuel-consumption', 'spend-analysis', 'driver-performance', 'vehicle-performance',
   'compliance', 'budget-variance', 'anomaly-report', 'forecourt-analysis',
-  'cost-allocation', 'environmental',
+  'cost-allocation',
 ] as const;
 
 export type ReportType = typeof REPORT_TYPES[number];
@@ -542,7 +542,6 @@ export async function runReport(
     case 'anomaly-report': return anomalyReport(operatorId, filters, prisma);
     case 'forecourt-analysis': return forecourtAnalysis(operatorId, filters, prisma);
     case 'cost-allocation': return costAllocation(operatorId, filters, prisma);
-    case 'environmental': return environmental(operatorId, filters, prisma);
     default: throw new Error(`Unknown report type: ${type as string}`);
   }
 }

@@ -195,6 +195,11 @@ router.post('/', contractWriteAccess, async (req: Request, res: Response, next: 
       terms,
       renewalType,
       renewalNoticeDays,
+      dailyKmLimit,
+      monthlyKmLimit,
+      totalKmLimit,
+      excessKmRate,
+      kmAtStart,
       notes,
     } = req.body as {
       vehicleId?: string;
@@ -212,6 +217,11 @@ router.post('/', contractWriteAccess, async (req: Request, res: Response, next: 
       terms?: string;
       renewalType?: string;
       renewalNoticeDays?: number;
+      dailyKmLimit?: number;
+      monthlyKmLimit?: number;
+      totalKmLimit?: number;
+      excessKmRate?: number;
+      kmAtStart?: number;
       notes?: string;
     };
 
@@ -243,6 +253,11 @@ router.post('/', contractWriteAccess, async (req: Request, res: Response, next: 
         terms: terms ?? null,
         renewalType: renewalType ?? null,
         renewalNoticeDays: renewalNoticeDays ?? null,
+        dailyKmLimit: dailyKmLimit ?? null,
+        monthlyKmLimit: monthlyKmLimit ?? null,
+        totalKmLimit: totalKmLimit ?? null,
+        excessKmRate: excessKmRate ?? null,
+        kmAtStart: kmAtStart ?? null,
         status: 'active',
         notes: notes ?? null,
       },
@@ -331,6 +346,11 @@ router.patch('/:id', contractWriteAccess, async (req: Request, res: Response, ne
       terms,
       renewalType,
       renewalNoticeDays,
+      dailyKmLimit,
+      monthlyKmLimit,
+      totalKmLimit,
+      excessKmRate,
+      kmAtStart,
       notes,
       status,
     } = req.body as Record<string, unknown>;
@@ -351,6 +371,11 @@ router.patch('/:id', contractWriteAccess, async (req: Request, res: Response, ne
         ...(terms !== undefined ? { terms: terms as string | null } : {}),
         ...(renewalType !== undefined ? { renewalType: renewalType as string | null } : {}),
         ...(renewalNoticeDays !== undefined ? { renewalNoticeDays: renewalNoticeDays as number | null } : {}),
+        ...(dailyKmLimit !== undefined ? { dailyKmLimit: dailyKmLimit as number | null } : {}),
+        ...(monthlyKmLimit !== undefined ? { monthlyKmLimit: monthlyKmLimit as number | null } : {}),
+        ...(totalKmLimit !== undefined ? { totalKmLimit: totalKmLimit as number | null } : {}),
+        ...(excessKmRate !== undefined ? { excessKmRate: excessKmRate as number | null } : {}),
+        ...(kmAtStart !== undefined ? { kmAtStart: kmAtStart as number | null } : {}),
         ...(notes !== undefined ? { notes: notes as string | null } : {}),
         ...(status !== undefined ? { status: status as string } : {}),
       },
@@ -460,6 +485,96 @@ router.get('/:id/payments', contractReadAccess, async (req: Request, res: Respon
       success: true,
       data: payments,
       meta: { totalPaid: Math.round(totalPaid * 100) / 100 },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/contracts/:id/km-usage
+// ---------------------------------------------------------------------------
+router.get('/:id/km-usage', contractReadAccess, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const operatorId = req.user!.operatorId!;
+    const { id } = req.params as { id: string };
+
+    const contract = await prisma.vehicleContract.findFirst({
+      where: { id, operatorId, deletedAt: null },
+      include: {
+        vehicle: { select: { currentOdometer: true } },
+      },
+    });
+
+    if (!contract) throw new AppError(404, 'Contract not found');
+
+    const kmAtStart = contract.kmAtStart !== null ? contract.kmAtStart : null;
+
+    if (kmAtStart === null) {
+      res.json({
+        success: true,
+        data: {
+          totalKmUsed: null,
+          kmAtStart: null,
+          currentOdometer: contract.vehicle.currentOdometer ?? null,
+          dailyAverage: null,
+          monthlyAverage: null,
+          daily: null,
+          monthly: null,
+          total: null,
+          excessKm: null,
+          excessCost: null,
+        },
+      });
+      return;
+    }
+
+    const currentKm = contract.vehicle.currentOdometer ?? 0;
+    const totalKmUsed = Math.max(0, currentKm - kmAtStart);
+
+    const now = new Date();
+    const startDate = new Date(contract.startDate);
+    const msElapsed = now.getTime() - startDate.getTime();
+    const daysElapsed = Math.max(1, msElapsed / (1000 * 60 * 60 * 24));
+    const monthsElapsed = daysElapsed / 30.44;
+
+    const dailyAverage = Math.round((totalKmUsed / daysElapsed) * 100) / 100;
+    const monthlyAverage = Math.round((totalKmUsed / monthsElapsed) * 100) / 100;
+
+    const calcLimitStatus = (limit: number | null, used: number) => {
+      if (limit === null || limit === 0) return null;
+      const percentage = Math.round((used / limit) * 10000) / 100;
+      let status: 'ok' | 'warning' | 'exceeded' = 'ok';
+      if (percentage >= 100) status = 'exceeded';
+      else if (percentage >= 80) status = 'warning';
+      return { limit, used: Math.round(used * 100) / 100, percentage, status };
+    };
+
+    const daily = calcLimitStatus(contract.dailyKmLimit, dailyAverage);
+    const monthly = calcLimitStatus(contract.monthlyKmLimit, monthlyAverage);
+    const total = calcLimitStatus(contract.totalKmLimit, totalKmUsed);
+
+    let excessKm = 0;
+    let excessCost = 0;
+    if (contract.totalKmLimit !== null && contract.excessKmRate !== null) {
+      excessKm = Math.max(0, totalKmUsed - contract.totalKmLimit);
+      excessCost = Math.round(excessKm * Number(contract.excessKmRate) * 100) / 100;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalKmUsed,
+        kmAtStart,
+        currentOdometer: currentKm,
+        dailyAverage,
+        monthlyAverage,
+        daily,
+        monthly,
+        total,
+        excessKm,
+        excessCost,
+      },
     });
   } catch (err) {
     next(err);

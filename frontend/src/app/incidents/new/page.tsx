@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import { SearchableDropdown } from '../../../components/SearchableDropdown';
 
 const INCIDENT_TYPES = [
   'accident', 'theft', 'hijacking', 'vandalism',
@@ -81,14 +82,23 @@ export default function NewIncidentPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Vehicle ID <span className="text-red-500">*</span></label>
-                <input type="text" value={form.vehicleId} onChange={(e) => setField('vehicleId', e.target.value)}
-                  placeholder="Vehicle UUID" className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                <SearchableDropdown
+                  apiEndpoint="/vehicles"
+                  displayFormat={(v) => `${v.registrationNumber} — ${v.make} ${v.model}`}
+                  placeholder="Search vehicles..."
+                  label="Vehicle"
+                  required
+                  onChange={(id) => setField('vehicleId', id)}
+                />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Driver ID (optional)</label>
-                <input type="text" value={form.driverId} onChange={(e) => setField('driverId', e.target.value)}
-                  placeholder="Driver UUID" className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                <SearchableDropdown
+                  apiEndpoint="/drivers"
+                  displayFormat={(d) => `${d.lastName}, ${d.firstName} (${d.mobileNumber})`}
+                  placeholder="Search drivers..."
+                  label="Driver (optional)"
+                  onChange={(id) => setField('driverId', id)}
+                />
               </div>
             </div>
 

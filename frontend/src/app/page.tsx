@@ -85,26 +85,41 @@ function KpiCard({ label, value, sub, link }: { label: string; value: string | n
   return link ? <Link href={link}>{content}</Link> : content;
 }
 
+interface Fleet {
+  id: string;
+  name: string;
+}
+
 export default function DashboardPage() {
   const [period, setPeriod] = useState('1M');
+  const [fleetId, setFleetId] = useState('');
+
+  const fleetQs = fleetId ? `&fleetId=${fleetId}` : '';
+
+  const { data: fleetsRes } = useQuery<{ data: Fleet[] }>({
+    queryKey: ['fleets-dropdown'],
+    queryFn: () => api.get('/fleets?limit=100'),
+  });
 
   const { data: summaryRes, isLoading: sumLoading } = useQuery<{ data: DashboardSummary }>({
-    queryKey: ['dashboard-summary', period],
-    queryFn: () => api.get(`/dashboard/summary?period=${period}`),
+    queryKey: ['dashboard-summary', period, fleetId],
+    queryFn: () => api.get(`/dashboard/summary?period=${period}${fleetQs}`),
     refetchInterval: 60000,
   });
 
   const { data: chartsRes } = useQuery<{ data: DashboardCharts }>({
-    queryKey: ['dashboard-charts', period],
-    queryFn: () => api.get(`/dashboard/charts?period=${period}`),
+    queryKey: ['dashboard-charts', period, fleetId],
+    queryFn: () => api.get(`/dashboard/charts?period=${period}${fleetQs}`),
     refetchInterval: 60000,
   });
 
   const { data: alertsRes } = useQuery<{ data: Alert[] }>({
-    queryKey: ['dashboard-alerts'],
-    queryFn: () => api.get('/dashboard/alerts'),
+    queryKey: ['dashboard-alerts', fleetId],
+    queryFn: () => api.get(`/dashboard/alerts${fleetId ? `?fleetId=${fleetId}` : ''}`),
     refetchInterval: 60000,
   });
+
+  const fleets = fleetsRes?.data ?? [];
 
   const kpis = summaryRes?.data?.kpis;
   const charts = chartsRes?.data;
@@ -120,14 +135,27 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">Fleet overview and key metrics</p>
           </div>
-          {/* Period selector */}
-          <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
-            {PERIODS.map((p) => (
-              <button key={p.value} onClick={() => setPeriod(p.value)}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${period === p.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
-                {p.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            {/* Fleet filter */}
+            <select
+              value={fleetId}
+              onChange={(e) => setFleetId(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 shadow-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">All Fleets</option>
+              {fleets.map((f: Fleet) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            {/* Period selector */}
+            <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+              {PERIODS.map((p) => (
+                <button key={p.value} onClick={() => setPeriod(p.value)}
+                  className={`px-3 py-2 text-xs font-medium transition-colors ${period === p.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

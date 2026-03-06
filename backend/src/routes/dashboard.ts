@@ -44,9 +44,13 @@ function periodDates(period: string): { current: { gte: Date; lte: Date }; previ
 router.get('/summary', async (req: Request, res: Response): Promise<void> => {
   const operatorId = getOperatorScope(req);
   const period = (req.query.period as string) ?? '1M';
+  const fleetId = req.query.fleetId as string | undefined;
   const { current, previous } = periodDates(period);
 
   const baseWhere = operatorId ? { operatorId } : {};
+  const vehicleWhere = { ...baseWhere, deletedAt: null, ...(fleetId ? { fleetId } : {}) };
+  const driverWhere = { ...baseWhere, deletedAt: null, ...(fleetId ? { fleetId } : {}) };
+  const fuelWhere = { ...baseWhere, ...(fleetId ? { fleetId } : {}) };
 
   const [
     totalVehicles, activeVehicles, vehiclesInMaintenance,
@@ -56,26 +60,25 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
     openIncidents,
     overdueDrivers,
   ] = await Promise.all([
-    prisma.vehicle.count({ where: { ...baseWhere, deletedAt: null } }),
-    prisma.vehicle.count({ where: { ...baseWhere, deletedAt: null, status: 'active' } }),
-    prisma.vehicle.count({ where: { ...baseWhere, deletedAt: null, status: 'maintenance' } }),
-    prisma.driver.count({ where: { ...baseWhere, deletedAt: null } }),
-    prisma.driver.count({ where: { ...baseWhere, deletedAt: null, status: 'active' } }),
+    prisma.vehicle.count({ where: vehicleWhere }),
+    prisma.vehicle.count({ where: { ...vehicleWhere, status: 'active' } }),
+    prisma.vehicle.count({ where: { ...vehicleWhere, status: 'maintenance' } }),
+    prisma.driver.count({ where: driverWhere }),
+    prisma.driver.count({ where: { ...driverWhere, status: 'active' } }),
     prisma.fuelTransaction.aggregate({
-      where: { ...baseWhere, transactionDate: current },
+      where: { ...fuelWhere, transactionDate: current },
       _sum: { totalAmount: true, litresFilled: true },
       _count: true,
     }),
     prisma.fuelTransaction.aggregate({
-      where: { ...baseWhere, transactionDate: previous },
+      where: { ...fuelWhere, transactionDate: previous },
       _sum: { totalAmount: true },
     }),
     prisma.fleet.count({ where: { ...baseWhere, deletedAt: null } }),
-    prisma.incident.count({ where: { ...baseWhere, deletedAt: null, status: { in: ['reported', 'under_investigation'] } } }),
-    // Drivers with expired/no licence
+    prisma.incident.count({ where: { ...baseWhere, deletedAt: null, status: { in: ['reported', 'under_investigation'] }, ...(fleetId ? { fleetId } : {}) } }),
     prisma.driver.count({
       where: {
-        ...baseWhere, deletedAt: null,
+        ...driverWhere,
         OR: [{ licenceExpiry: { lt: new Date() } }, { licenceExpiry: null }],
       },
     }),
@@ -88,7 +91,7 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
   // Compliance score: % of drivers with valid licence + PrDP
   const validDrivers = await prisma.driver.count({
     where: {
-      ...baseWhere, deletedAt: null,
+      ...driverWhere,
       licenceExpiry: { gte: new Date() },
       prdpExpiry: { gte: new Date() },
     },
@@ -97,7 +100,7 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
 
   // Average efficiency
   const efficiencyData = await prisma.fuelTransaction.findMany({
-    where: { ...baseWhere, transactionDate: current, fuelEfficiency: { not: null } },
+    where: { ...fuelWhere, transactionDate: current, fuelEfficiency: { not: null } },
     select: { fuelEfficiency: true },
     take: 200,
   });
@@ -126,12 +129,14 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
 router.get('/charts', async (req: Request, res: Response): Promise<void> => {
   const operatorId = getOperatorScope(req);
   const period = (req.query.period as string) ?? '1M';
+  const fleetId = req.query.fleetId as string | undefined;
   const { current } = periodDates(period);
   const baseWhere = operatorId ? { operatorId } : {};
+  const fuelWhere = { ...baseWhere, ...(fleetId ? { fleetId } : {}) };
 
   // Fuel spend trend — group by day or week depending on period
   const txns = await prisma.fuelTransaction.findMany({
-    where: { ...baseWhere, transactionDate: current },
+    where: { ...fuelWhere, transactionDate: current },
     select: { transactionDate: true, totalAmount: true, fuelType: true, fleetId: true, fleet: { select: { name: true } } },
     orderBy: { transactionDate: 'asc' },
   });
@@ -161,7 +166,7 @@ router.get('/charts', async (req: Request, res: Response): Promise<void> => {
   // Top 10 vehicles by spend
   const vehicleSpend = await prisma.fuelTransaction.groupBy({
     by: ['vehicleId'],
-    where: { ...baseWhere, transactionDate: current },
+    where: { ...fuelWhere, transactionDate: current },
     _sum: { totalAmount: true },
     orderBy: { _sum: { totalAmount: 'desc' } },
     take: 10,
@@ -189,7 +194,9 @@ router.get('/charts', async (req: Request, res: Response): Promise<void> => {
 // ─── GET /api/v1/dashboard/alerts ────────────────────────────────────────────
 router.get('/alerts', async (req: Request, res: Response): Promise<void> => {
   const operatorId = getOperatorScope(req);
+  const fleetId = req.query.fleetId as string | undefined;
   const baseWhere = operatorId ? { operatorId } : {};
+  const fleetFilter = fleetId ? { fleetId } : {};
   const now = new Date();
   const in30 = new Date(now.getTime() + 30 * 24 * 86400000);
 
@@ -203,26 +210,26 @@ router.get('/alerts', async (req: Request, res: Response): Promise<void> => {
     highAnomalies,
   ] = await Promise.all([
     prisma.driver.findMany({
-      where: { ...baseWhere, deletedAt: null, licenceExpiry: { lt: now } },
+      where: { ...baseWhere, ...fleetFilter, deletedAt: null, licenceExpiry: { lt: now } },
       select: { id: true, firstName: true, lastName: true, licenceExpiry: true },
       take: 5,
     }),
     prisma.driver.findMany({
-      where: { ...baseWhere, deletedAt: null, licenceExpiry: { gte: now, lte: in30 } },
+      where: { ...baseWhere, ...fleetFilter, deletedAt: null, licenceExpiry: { gte: now, lte: in30 } },
       select: { id: true, firstName: true, lastName: true, licenceExpiry: true },
       take: 5,
     }),
     prisma.incident.findMany({
-      where: { ...baseWhere, deletedAt: null, severity: 'critical', status: 'reported' },
+      where: { ...baseWhere, ...fleetFilter, deletedAt: null, severity: 'critical', status: 'reported' },
       select: { id: true, incidentNumber: true, vehicle: { select: { registrationNumber: true } } },
       take: 3,
     }),
     prisma.maintenanceSchedule.count({
-      where: { ...baseWhere, isActive: true, nextDueDate: { lt: now } },
+      where: { ...baseWhere, isActive: true, nextDueDate: { lt: now }, ...(fleetId ? { vehicle: { fleetId } } : {}) },
     }),
     prisma.fuelTransaction.count({
       where: {
-        ...baseWhere,
+        ...baseWhere, ...fleetFilter,
         transactionDate: { gte: new Date(now.getTime() - 7 * 86400000) },
       },
     }),

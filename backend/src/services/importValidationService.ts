@@ -143,6 +143,17 @@ export async function detectDuplicate(
     return existing?.id ?? null;
   }
 
+  if (entityType === 'tag') {
+    if (data.tagNumber) {
+      const dup = await prisma.tag.findFirst({
+        where: { operatorId, tagNumber: String(data.tagNumber), deletedAt: null },
+        select: { id: true },
+      });
+      return dup?.id ?? null;
+    }
+    return null;
+  }
+
   return null;
 }
 
@@ -294,6 +305,28 @@ export async function validateRow(
   if (entityType === 'fleet') {
     const name = String(data.name ?? '').trim();
     if (!name) errors.push('name is required');
+  }
+
+  if (entityType === 'tag') {
+    if (!data.tagNumber) errors.push('Tag number is required');
+    // Check tag number uniqueness within operator
+    const existingTag = await prisma.tag.findFirst({
+      where: { operatorId, tagNumber: String(data.tagNumber), deletedAt: null },
+    });
+    if (existingTag) warnings.push(`Tag number ${data.tagNumber} already exists`);
+    // If vehicleRegistration provided, look up vehicle
+    if (data.vehicleRegistration) {
+      const vehicle = await prisma.vehicle.findFirst({
+        where: { operatorId, registrationNumber: String(data.vehicleRegistration).toUpperCase(), deletedAt: null },
+      });
+      if (!vehicle) errors.push(`Vehicle ${data.vehicleRegistration} not found`);
+    }
+    // Validate dates
+    if (data.expiryDate) {
+      const d = parseDateFlexible(String(data.expiryDate));
+      if (!d) errors.push('Invalid expiry date format');
+      else if (d < new Date()) warnings.push('Expiry date is in the past');
+    }
   }
 
   // Foreign key: fleetId given as a name string — try to resolve it

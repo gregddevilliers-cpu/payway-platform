@@ -24,6 +24,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      localStorage.removeItem('auth_token');
+      window.location.href = '/login?expired=true';
+    }
+    throw new ApiError(401, 'Session expired');
+  }
+
   const body = await res.json();
 
   if (!res.ok) {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import { SearchableDropdown } from '../../../components/SearchableDropdown';
 
 const REPAIR_TYPES = ['mechanical', 'electrical', 'body_panel', 'tyre', 'windscreen', 'interior', 'other'];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
@@ -23,6 +24,9 @@ export default function NewRepairPage() {
     isDrivable: true,
     estimatedCompletion: '',
   });
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -108,18 +112,23 @@ export default function NewRepairPage() {
           {step === 0 && (
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Vehicle ID <span className="text-red-500">*</span></label>
-                <input type="text" value={form.vehicleId}
-                  onChange={(e) => setField('vehicleId', e.target.value)}
-                  placeholder="Vehicle UUID"
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                <SearchableDropdown
+                  apiEndpoint="/vehicles"
+                  displayFormat={(v) => `${v.registrationNumber} — ${v.make} ${v.model}`}
+                  placeholder="Search vehicles..."
+                  label="Vehicle"
+                  required
+                  onChange={(id, item) => { setField('vehicleId', id); setSelectedVehicle(item); }}
+                />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Driver ID (optional)</label>
-                <input type="text" value={form.driverId}
-                  onChange={(e) => setField('driverId', e.target.value)}
-                  placeholder="Driver UUID"
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                <SearchableDropdown
+                  apiEndpoint="/drivers"
+                  displayFormat={(d) => `${d.lastName}, ${d.firstName} (${d.mobileNumber})`}
+                  placeholder="Search drivers..."
+                  label="Driver (optional)"
+                  onChange={(id, item) => { setField('driverId', id); setSelectedDriver(item); }}
+                />
               </div>
             </div>
           )}
@@ -180,8 +189,8 @@ export default function NewRepairPage() {
             <div className="space-y-4">
               <h2 className="text-sm font-semibold text-gray-800">Review & Confirm</h2>
               <dl className="grid grid-cols-2 gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm">
-                <div><dt className="text-xs text-gray-500 uppercase">Vehicle ID</dt><dd className="mt-0.5 font-mono text-xs text-gray-900">{form.vehicleId}</dd></div>
-                {form.driverId && <div><dt className="text-xs text-gray-500 uppercase">Driver ID</dt><dd className="mt-0.5 font-mono text-xs text-gray-900">{form.driverId}</dd></div>}
+                <div><dt className="text-xs text-gray-500 uppercase">Vehicle</dt><dd className="mt-0.5 text-xs text-gray-900">{selectedVehicle ? `${selectedVehicle.registrationNumber} — ${selectedVehicle.make} ${selectedVehicle.model}` : form.vehicleId}</dd></div>
+                {form.driverId && <div><dt className="text-xs text-gray-500 uppercase">Driver</dt><dd className="mt-0.5 text-xs text-gray-900">{selectedDriver ? `${selectedDriver.lastName}, ${selectedDriver.firstName}` : form.driverId}</dd></div>}
                 <div><dt className="text-xs text-gray-500 uppercase">Type</dt><dd className="mt-0.5 text-gray-900">{form.repairType.replace(/_/g, ' ')}</dd></div>
                 <div><dt className="text-xs text-gray-500 uppercase">Priority</dt><dd className="mt-0.5 text-gray-900">{form.priority}</dd></div>
                 <div><dt className="text-xs text-gray-500 uppercase">Drivable</dt><dd className="mt-0.5 text-gray-900">{form.isDrivable ? 'Yes' : 'No'}</dd></div>

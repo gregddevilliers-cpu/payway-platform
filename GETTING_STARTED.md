@@ -1,6 +1,6 @@
-# Getting Started — PayWay Platform
+# Getting Started — Active Fleet Platform
 
-Welcome! This guide will walk you through setting up the PayWay project on your computer from scratch. Take it one step at a time.
+Welcome! This guide will walk you through setting up the Active Fleet project on your computer from scratch. Take it one step at a time.
 
 ---
 
@@ -25,8 +25,8 @@ Open a terminal (Command Prompt, PowerShell, or Terminal on Mac) and run:
 
 ```bash
 # Create a new folder for the project
-mkdir payway-platform
-cd payway-platform
+mkdir activefleet-platform
+cd activefleet-platform
 
 # Initialise a git repository
 git init
@@ -54,11 +54,11 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
-    container_name: payway_db
+    container_name: activefleet_db
     environment:
-      POSTGRES_USER: payway
-      POSTGRES_PASSWORD: payway_local_password
-      POSTGRES_DB: payway_dev
+      POSTGRES_USER: activefleet
+      POSTGRES_PASSWORD: activefleet_local_password
+      POSTGRES_DB: activefleet_dev
     ports:
       - "5432:5432"
     volumes:
@@ -66,7 +66,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: payway_redis
+    container_name: activefleet_redis
     ports:
       - "6379:6379"
 
@@ -111,7 +111,7 @@ npx prisma init
 Create a `.env` file in the `backend/` folder:
 
 ```env
-DATABASE_URL="postgresql://payway:payway_local_password@localhost:5432/payway_dev"
+DATABASE_URL="postgresql://activefleet:activefleet_local_password@localhost:5432/activefleet_dev"
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="change-this-to-a-long-random-string-in-production"
 JWT_REFRESH_SECRET="change-this-too"
@@ -279,7 +279,7 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
-  res.json({ success: true, message: 'PayWay API is running' });
+  res.json({ success: true, message: 'Active Fleet API is running' });
 });
 
 app.listen(PORT, () => {
@@ -306,7 +306,7 @@ npm run dev
 
 Open your browser and visit: **http://localhost:3001/api/v1/health**
 
-You should see: `{ "success": true, "message": "PayWay API is running" }`
+You should see: `{ "success": true, "message": "Active Fleet API is running" }`
 
 🎉 Your backend is working!
 
@@ -344,13 +344,13 @@ Work through these in order — each one builds on the last:
 Since you're using Claude to help build this, here are prompts that work well:
 
 **For building a new API endpoint:**
-> "Using the PayWay spec, build the `GET /api/v1/vehicles` endpoint in Express with TypeScript. It should support pagination, filtering by fleet_id and status, and sorting. Use Prisma for the database query."
+> "Using the Active Fleet spec, build the `GET /api/v1/vehicles` endpoint in Express with TypeScript. It should support pagination, filtering by fleet_id and status, and sorting. Use Prisma for the database query."
 
 **For building a UI component:**
 > "Build a Vehicle list page in Next.js with TypeScript and Tailwind. Show columns: Registration, Make/Model, Year, Fleet, Status. Include a search bar and status filter dropdown."
 
 **For business logic:**
-> "Write a TypeScript function that validates a South African ID number using the Luhn algorithm as described in the PayWay spec."
+> "Write a TypeScript function that validates a South African ID number using the Luhn algorithm as described in the Active Fleet spec."
 
 **For fixing errors:**
 > "I'm getting this error: [paste error]. Here's my code: [paste code]. What's wrong?"

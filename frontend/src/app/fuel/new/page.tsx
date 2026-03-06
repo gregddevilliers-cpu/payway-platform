@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
+import { SearchableDropdown } from '../../../components/SearchableDropdown';
 
 interface CreatePayload {
   vehicleId: string;
@@ -93,14 +94,24 @@ export default function NewFuelTransactionPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Vehicle ID <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.vehicleId}
-                  onChange={(e) => set('vehicleId', e.target.value)} placeholder="Vehicle UUID" />
+                <SearchableDropdown
+                  apiEndpoint="/vehicles"
+                  displayFormat={(v) => `${v.registrationNumber} — ${v.make} ${v.model}`}
+                  placeholder="Search vehicles..."
+                  label="Vehicle"
+                  required
+                  onChange={(id) => set('vehicleId', id)}
+                />
               </div>
               <div>
-                <label className={labelCls}>Driver ID <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.driverId}
-                  onChange={(e) => set('driverId', e.target.value)} placeholder="Driver UUID" />
+                <SearchableDropdown
+                  apiEndpoint="/drivers"
+                  displayFormat={(d) => `${d.lastName}, ${d.firstName} (${d.mobileNumber})`}
+                  placeholder="Search drivers..."
+                  label="Driver"
+                  required
+                  onChange={(id) => set('driverId', id)}
+                />
               </div>
             </div>
 

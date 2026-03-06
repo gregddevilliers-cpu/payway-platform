@@ -14,12 +14,19 @@ interface JwtPayload {
 
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  let token: string | undefined;
+
+  if (header && header.startsWith('Bearer ')) {
+    token = header.slice(7);
+  } else if (req.query._token && typeof req.query._token === 'string') {
+    // Fallback: accept token via query param for browser-initiated downloads (e.g. PDF export)
+    token = req.query._token;
+  }
+
+  if (!token) {
     res.status(401).json({ success: false, errors: ['Authentication required'] });
     return;
   }
-
-  const token = header.slice(7);
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
     req.user = {

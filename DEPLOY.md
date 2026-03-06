@@ -1,10 +1,10 @@
-# PayWay Platform — Deployment Guide
+# Active Fleet Platform — Deployment Guide
 
 ## Prerequisites
 
 - Linux server (Ubuntu 22.04+ recommended) with at least 2GB RAM
 - Docker & Docker Compose installed
-- A domain name pointed to your server IP (e.g. `payway.yourdomain.co.za`)
+- A domain name pointed to your server IP (e.g. `activefleet.yourdomain.co.za`)
 - CloudFlare account (free tier is fine)
 
 ---
@@ -21,8 +21,8 @@ docker --version
 ## Step 2: Clone the repo on your server
 
 ```bash
-git clone <your-repo-url> /opt/payway
-cd /opt/payway
+git clone <your-repo-url> /opt/activefleet
+cd /opt/activefleet
 ```
 
 ## Step 3: Create your `.env` file
@@ -37,7 +37,7 @@ Fill in the values:
 | Variable | What to put |
 |---|---|
 | `POSTGRES_PASSWORD` | A strong random password |
-| `DATABASE_URL` | `postgresql://payway:YOUR_PASSWORD@postgres:5432/payway?schema=public` |
+| `DATABASE_URL` | `postgresql://activefleet:YOUR_PASSWORD@postgres:5432/activefleet?schema=public` |
 | `JWT_SECRET` | A long random string (run `openssl rand -hex 32`) |
 | `NEXT_PUBLIC_API_URL` | `https://yourdomain.co.za/api/v1` |
 
@@ -83,10 +83,10 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml down
 
 # Database backup
-docker compose -f docker-compose.prod.yml exec postgres pg_dump -U payway payway > backup.sql
+docker compose -f docker-compose.prod.yml exec postgres pg_dump -U activefleet activefleet > backup.sql
 
 # Restore database
-cat backup.sql | docker compose -f docker-compose.prod.yml exec -T postgres psql -U payway payway
+cat backup.sql | docker compose -f docker-compose.prod.yml exec -T postgres psql -U activefleet activefleet
 ```
 
 ## Create First Super Admin

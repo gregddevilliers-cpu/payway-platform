@@ -15,12 +15,12 @@ const REPORT_META: Record<string, { name: string; description: string; groupByOp
   'anomaly-report': { name: 'Anomaly Report', description: 'Flagged transactions by type' },
   'forecourt-analysis': { name: 'Forecourt Analysis', description: 'Spend by fuel station' },
   'cost-allocation': { name: 'Cost Allocation', description: 'Costs allocated by fleet' },
-  'environmental': { name: 'Environmental', description: 'CO₂ emissions estimate', groupByOptions: ['fleet', 'vehicle'] },
 };
 
 function getDefaultDates() {
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const from = new Date(now);
+  from.setDate(from.getDate() - 30);
   return {
     dateFrom: from.toISOString().split('T')[0],
     dateTo: now.toISOString().split('T')[0],

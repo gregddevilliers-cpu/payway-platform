@@ -43,7 +43,61 @@ model Operator {
   costCentres          CostCentre[]
   contracts            VehicleContract[]
   contractPayments     ContractPayment[]
+  insurers             Insurer[]
+  handovers            VehicleHandover[]
 }
+
+model VehicleHandover {
+  id                  String    @id @default(uuid())
+  operatorId          String
+  vehicleId           String
+  driverId            String?
+  fleetId             String?
+  handoverNumber      String    @unique
+  handoverType        String
+  handoverDatetime    DateTime
+  odometerReading     Int?
+  fuelLevel           String?
+  exteriorCondition   String?
+  interiorCondition   String?
+  damageNotes         String?
+  equipmentChecklist  Json?
+  driverSignature     String?
+  managerSignature    String?
+  photos              Json?
+  notes               String?
+  latitude            Decimal?  @db.Decimal(10, 7)
+  longitude           Decimal?  @db.Decimal(10, 7)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+  driver   Driver?  @relation(fields: [driverId], references: [id])
+  fleet    Fleet?   @relation(fields: [fleetId], references: [id])
+}
+
+model Insurer {
+  id            String    @id @default(uuid())
+  operatorId    String
+  companyName   String
+  claimsPhone   String?
+  claimsEmail   String?
+  generalPhone  String?
+  brokerName    String?
+  brokerPhone   String?
+  brokerEmail   String?
+  notes         String?
+  status        String    @default("active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  operator Operator  @relation(fields: [operatorId], references: [id])
+  vehicles Vehicle[]
+}
+
 model Fleet {
   id              String            @id @default(uuid())
   operatorId      String
@@ -68,6 +122,7 @@ model Fleet {
   maintenanceRecords   MaintenanceRecord[]
   repairJobs           RepairJob[]
   vehicles             Vehicle[]
+  handovers            VehicleHandover[]
 }
 
 model Vehicle {
@@ -87,6 +142,7 @@ model Vehicle {
   tagStatus          String            @default("unassigned")
   tagNumber          String?
   costCentreId       String?
+  insurerId          String?
   ownershipType      String?
   leaseExpiry        DateTime?
   createdAt          DateTime          @default(now())
@@ -96,6 +152,7 @@ model Vehicle {
   operator             Operator              @relation(fields: [operatorId], references: [id])
   fleet                Fleet                 @relation(fields: [fleetId], references: [id])
   costCentre           CostCentre?           @relation(fields: [costCentreId], references: [id])
+  insurer              Insurer?              @relation(fields: [insurerId], references: [id])
   fuelTransactions     FuelTransaction[]
   incidents            Incident[]
   maintenanceRecords   MaintenanceRecord[]
@@ -103,6 +160,24 @@ model Vehicle {
   repairJobs           RepairJob[]
   tags                 Tag[]
   contracts            VehicleContract[]
+  equipment            VehicleEquipment[]
+  handovers            VehicleHandover[]
+}
+
+model VehicleEquipment {
+  id             String    @id @default(uuid())
+  vehicleId      String
+  equipmentType  String
+  status         String    @default("present")
+  expiryDate     DateTime?
+  lastChecked    DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@unique([vehicleId, equipmentType])
 }
 
 model Driver {
@@ -133,6 +208,7 @@ model Driver {
   fuelTransactions FuelTransaction[]
   incidents        Incident[]
   repairJobs       RepairJob[]
+  handovers        VehicleHandover[]
 }
 
 model User {
@@ -577,6 +653,11 @@ model VehicleContract {
   terms              String?
   renewalType        String?
   renewalNoticeDays  Int?
+  dailyKmLimit       Int?
+  monthlyKmLimit     Int?
+  totalKmLimit       Int?
+  excessKmRate       Decimal?  @db.Decimal(10, 2)
+  kmAtStart          Int?
   status             String    @default("active")
   terminationReason  String?
   terminationDate    DateTime?

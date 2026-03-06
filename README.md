@@ -1,14 +1,14 @@
-# PayWay Platform — Project README
+# Active Fleet Platform — Project README
 
-> **Fleet Management Web Application**  
-> BT Corp / Umanyano · Version 3.0 · March 2026  
+> **Fleet Management Web Application**
+> BT Corp / Umanyano · Version 3.0 · March 2026
 > _Confidential — For Development Use Only_
 
 ---
 
 ## What Is This Project?
 
-PayWay is a **web application** for managing vehicles, drivers, fuel spending, and fleet operations — built for the South African taxi and fleet industry.
+Active Fleet is a **web application** for managing vehicles, drivers, fuel spending, and fleet operations — built for the South African taxi and fleet industry.
 
 Think of it like a dashboard where fleet managers can:
 - See how much fuel each vehicle is using
@@ -37,7 +37,7 @@ Think of it like a dashboard where fleet managers can:
 ## Project Structure (Recommended)
 
 ```
-payway-platform/
+activefleet-platform/
 ├── frontend/               # Next.js app (what users see)
 │   ├── src/
 │   │   ├── app/            # Pages (Next.js App Router)

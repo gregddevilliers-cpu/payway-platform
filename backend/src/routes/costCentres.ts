@@ -154,17 +154,20 @@ router.get('/:id', ccReadAccess, async (req: Request, res: Response, next: NextF
     const from = dateFrom ? new Date(dateFrom) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const to = dateTo ? new Date(dateTo) : new Date();
 
+    // Join through Vehicle — FuelTransaction/MaintenanceRecord/RepairJob don't have costCentreId directly
+    const vehicleIds = cc.vehicles.map((v) => v.id);
+
     const [fuelAgg, maintAgg, repairAgg] = await Promise.all([
-      (prisma.fuelTransaction.aggregate as any)({
-        where: { costCentreId: id, transactionDate: { gte: from, lte: to } },
+      prisma.fuelTransaction.aggregate({
+        where: { vehicleId: { in: vehicleIds }, transactionDate: { gte: from, lte: to } },
         _sum: { totalAmount: true },
       }),
-      (prisma.maintenanceRecord.aggregate as any)({
-        where: { costCentreId: id, serviceDate: { gte: from, lte: to }, deletedAt: null },
+      prisma.maintenanceRecord.aggregate({
+        where: { vehicleId: { in: vehicleIds }, serviceDate: { gte: from, lte: to }, deletedAt: null },
         _sum: { cost: true },
       }),
-      (prisma.repairJob.aggregate as any)({
-        where: { costCentreId: id, createdAt: { gte: from, lte: to }, deletedAt: null },
+      prisma.repairJob.aggregate({
+        where: { vehicleId: { in: vehicleIds }, createdAt: { gte: from, lte: to }, deletedAt: null },
         _sum: { totalCost: true },
       }),
     ]);
@@ -301,9 +304,14 @@ router.get('/:id/transactions', ccReadAccess, async (req: Request, res: Response
     const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
 
+    // Join through Vehicle — FuelTransaction doesn't have costCentreId directly
+    const vehicleIds = (await prisma.vehicle.findMany({ where: { costCentreId: id, deletedAt: null }, select: { id: true } })).map((v) => v.id);
+
+    const txWhere = { vehicleId: { in: vehicleIds } };
+
     const [transactions, total] = await prisma.$transaction([
       prisma.fuelTransaction.findMany({
-        where: { costCentreId: id } as any,
+        where: txWhere,
         include: {
           vehicle: { select: { registrationNumber: true, make: true, model: true } },
           driver: { select: { firstName: true, lastName: true } },
@@ -312,7 +320,7 @@ router.get('/:id/transactions', ccReadAccess, async (req: Request, res: Response
         skip,
         take: limitNum,
       }),
-      prisma.fuelTransaction.count({ where: { costCentreId: id } as any }),
+      prisma.fuelTransaction.count({ where: txWhere }),
     ]);
 
     res.json({

@@ -26,6 +26,10 @@ import costCentreRoutes from './routes/costCentres';
 import vatRoutes from './routes/vat';
 import budgetRoutes from './routes/budget';
 import contractRoutes from './routes/contracts';
+import insurerRoutes from './routes/insurers';
+import vehicleEquipmentRoutes from './routes/vehicleEquipment';
+import handoverRoutes from './routes/handovers';
+import userRoutes from './routes/users';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -38,7 +42,7 @@ app.use(express.json());
 app.get('/api/v1/health', (_req, res) => {
   res.json({
     success: true,
-    message: 'PayWay API is running',
+    message: 'Active Fleet API is running',
     timestamp: new Date().toISOString(),
   });
 });
@@ -64,6 +68,10 @@ app.use('/api/v1/cost-centres', costCentreRoutes);
 app.use('/api/v1/vat', vatRoutes);
 app.use('/api/v1/budget', budgetRoutes);
 app.use('/api/v1/contracts', contractRoutes);
+app.use('/api/v1/insurers', insurerRoutes);
+app.use('/api/v1/vehicles/:vehicleId/equipment', vehicleEquipmentRoutes);
+app.use('/api/v1/handovers', handoverRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Serve uploaded files statically (per-download auth is enforced via the documents route)
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
@@ -80,5 +88,5 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ PayWay API running on http://localhost:${PORT}`);
+  console.log(`✅ Active Fleet API running on http://localhost:${PORT}`);
 });

@@ -79,14 +79,14 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
   }
 
   const entityType = req.body.entityType as EntityType | undefined;
-  if (!entityType || !['vehicle', 'driver', 'fleet'].includes(entityType)) {
-    res.status(400).json(fail('entityType must be vehicle, driver, or fleet'));
+  if (!entityType || !['vehicle', 'driver', 'fleet', 'tag'].includes(entityType)) {
+    res.status(400).json(fail('entityType must be vehicle, driver, fleet, or tag'));
     return;
   }
 
-  // Fleet Managers cannot import fleet entities (only Op Admin + Super Admin can)
-  if (entityType === 'fleet' && req.user?.role === ROLES.FLEET_MANAGER) {
-    res.status(403).json(fail('Fleet Managers are not permitted to import fleet records'));
+  // Fleet Managers cannot import fleet or tag entities (only Op Admin + Super Admin can)
+  if ((entityType === 'fleet' || entityType === 'tag') && req.user?.role === ROLES.FLEET_MANAGER) {
+    res.status(403).json(fail('Fleet Managers are not permitted to import fleet or tag records'));
     return;
   }
 
@@ -211,8 +211,8 @@ router.get('/history', async (req: Request, res: Response): Promise<void> => {
 
 router.get('/templates/:entityType', async (req: Request, res: Response): Promise<void> => {
   const entityType = req.params.entityType as EntityType;
-  if (!['vehicle', 'driver', 'fleet'].includes(entityType)) {
-    res.status(400).json(fail('entityType must be vehicle, driver, or fleet'));
+  if (!['vehicle', 'driver', 'fleet', 'tag'].includes(entityType)) {
+    res.status(400).json(fail('entityType must be vehicle, driver, fleet, or tag'));
     return;
   }
 
@@ -246,9 +246,18 @@ router.get('/templates/:entityType', async (req: Request, res: Response): Promis
       licenceNumber: 'WC9876543', licenceCode: 'EB', licenceExpiry: '30/06/2027',
       prdpExpiry: '30/06/2026', status: 'active', fleetId: 'Fleet B',
     });
-  } else {
+  } else if (entityType === 'fleet') {
     examples.push({ name: 'Fleet Alpha', code: 'FLT-A', region: 'Western Cape', status: 'active' });
     examples.push({ name: 'Fleet Beta', code: 'FLT-B', region: 'Gauteng', status: 'active' });
+  } else if (entityType === 'tag') {
+    examples.push({
+      tagNumber: 'TAG-000001', vehicleRegistration: 'GP 123-456',
+      status: 'active', issuedDate: '2024-01-15', expiryDate: '2026-12-31',
+    });
+    examples.push({
+      tagNumber: 'TAG-000002', vehicleRegistration: 'CA 789-012',
+      status: 'active', issuedDate: '2024-03-01', expiryDate: '2027-02-28',
+    });
   }
 
   const csvRows = examples.map((row) =>
@@ -635,6 +644,45 @@ router.post('/:id/execute', async (req: Request, res: Response): Promise<void> =
               code: data.code ? String(data.code).trim() : undefined,
               region: data.region ? String(data.region).trim() : undefined,
               status: data.status ? String(data.status).trim() : 'active',
+            },
+          });
+        } else {
+          await prisma.importRow.update({ where: { id: row.id }, data: { status: 'skipped' } });
+          skippedCount++;
+          continue;
+        }
+
+      } else if (job.entityType === 'tag') {
+        const tagNumber = String(data.tagNumber ?? '').trim();
+        let vehicleId: string | null = null;
+
+        if (data.vehicleRegistration) {
+          const vehicle = await prisma.vehicle.findFirst({
+            where: { operatorId: job.operatorId, registrationNumber: String(data.vehicleRegistration).toUpperCase().trim(), deletedAt: null },
+          });
+          vehicleId = vehicle?.id ?? null;
+        }
+
+        if (row.duplicateOf && row.resolution === 'overwrite') {
+          await prisma.tag.update({
+            where: { id: row.duplicateOf },
+            data: {
+              vehicleId,
+              status: data.status ? String(data.status) : 'unassigned',
+              issuedDate: data.issuedDate ? parseDateFlexible(String(data.issuedDate)) : undefined,
+              expiryDate: data.expiryDate ? parseDateFlexible(String(data.expiryDate)) : undefined,
+            },
+          });
+        } else if (!row.duplicateOf) {
+          await prisma.tag.create({
+            data: {
+              operatorId: job.operatorId,
+              tagNumber,
+              vehicleId,
+              status: vehicleId ? 'active' : (data.status ? String(data.status) : 'unassigned'),
+              issuedDate: data.issuedDate ? parseDateFlexible(String(data.issuedDate)) : new Date(),
+              expiryDate: data.expiryDate ? parseDateFlexible(String(data.expiryDate)) : null,
+              activatedAt: vehicleId ? new Date() : null,
             },
           });
         } else {

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
+import { DocumentsPanel } from '../../../components/DocumentsPanel';
 
 interface LineItem { description: string; quantity: number; unitPrice: number; total: number }
 interface RepairQuote {
@@ -104,7 +105,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-const TABS = ['Overview', 'Quotes', 'Work Log', 'Costs'] as const;
+const TABS = ['Overview', 'Quotes', 'Work Log', 'Costs', 'Documents'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function RepairDetailPage() {
@@ -513,6 +514,12 @@ export default function RepairDetailPage() {
                 })()}
               </div>
             )}
+          </div>
+        )}
+        {/* Documents tab */}
+        {tab === 'Documents' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <DocumentsPanel entityType="repair_job" entityId={id} />
           </div>
         )}
       </div>

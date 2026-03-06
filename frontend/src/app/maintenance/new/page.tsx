@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import { SearchableDropdown } from '../../../components/SearchableDropdown';
 
 const MAINTENANCE_TYPES = [
   'routine_service', 'oil_change', 'tyre_rotation', 'tyre_replacement',
@@ -83,13 +84,13 @@ export default function NewMaintenancePage() {
 
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Vehicle ID <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={form.vehicleId}
-                onChange={(e) => setField('vehicleId', e.target.value)}
-                placeholder="Paste vehicle UUID…"
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              <SearchableDropdown
+                apiEndpoint="/vehicles"
+                displayFormat={(v) => `${v.registrationNumber} — ${v.make} ${v.model}`}
+                placeholder="Search vehicles..."
+                label="Vehicle"
+                required
+                onChange={(id) => setField('vehicleId', id)}
               />
             </div>
 

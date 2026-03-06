@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCreateContract } from '@/hooks/useContracts';
 import type { ContractType } from '@/types';
+import { SearchableDropdown } from '@/components/SearchableDropdown';
 
 const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
   { value: 'lease', label: 'Lease' },
@@ -36,12 +37,19 @@ export default function NewContractPage() {
     paymentDay: '',
     renewalType: '',
     renewalNoticeDays: '',
+    dailyKmLimit: '',
+    monthlyKmLimit: '',
+    totalKmLimit: '',
+    excessKmRate: '',
+    kmAtStart: '',
     terms: '',
     notes: '',
   });
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const showKmLimits = form.contractType === 'lease' || form.contractType === 'rental';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +70,13 @@ export default function NewContractPage() {
         paymentDay: form.paymentDay ? parseInt(form.paymentDay) : undefined,
         renewalType: form.renewalType || undefined,
         renewalNoticeDays: form.renewalNoticeDays ? parseInt(form.renewalNoticeDays) : undefined,
+        ...(showKmLimits ? {
+          dailyKmLimit: form.dailyKmLimit ? parseInt(form.dailyKmLimit) : undefined,
+          monthlyKmLimit: form.monthlyKmLimit ? parseInt(form.monthlyKmLimit) : undefined,
+          totalKmLimit: form.totalKmLimit ? parseInt(form.totalKmLimit) : undefined,
+          excessKmRate: form.excessKmRate ? parseFloat(form.excessKmRate) : undefined,
+          kmAtStart: form.kmAtStart ? parseInt(form.kmAtStart) : undefined,
+        } : {}),
         terms: form.terms || undefined,
         notes: form.notes || undefined,
       };
@@ -91,16 +106,13 @@ export default function NewContractPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vehicle ID <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
+              <SearchableDropdown
+                apiEndpoint="/vehicles"
+                displayFormat={(v) => `${v.registrationNumber} — ${v.make} ${v.model}`}
+                placeholder="Search vehicles..."
+                label="Vehicle"
                 required
-                value={form.vehicleId}
-                onChange={set('vehicleId')}
-                placeholder="Vehicle UUID"
-                className={inputClass}
+                onChange={(id) => setForm((f) => ({ ...f, vehicleId: id }))}
               />
             </div>
             <div>
@@ -249,13 +261,17 @@ export default function NewContractPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Renewal Type</label>
-              <input
-                type="text"
+              <select
                 value={form.renewalType}
                 onChange={set('renewalType')}
-                placeholder="e.g. auto, manual, optional"
                 className={inputClass}
-              />
+              >
+                <option value="">Select renewal type</option>
+                <option value="auto">Auto</option>
+                <option value="manual">Manual</option>
+                <option value="optional">Optional</option>
+                <option value="none">None</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Renewal Notice Days</label>
@@ -270,6 +286,75 @@ export default function NewContractPage() {
             </div>
           </div>
         </div>
+
+        {/* KM Limits — only for lease or rental */}
+        {showKmLimits && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">KM Limits</h2>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Daily KM Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.dailyKmLimit}
+                  onChange={set('dailyKmLimit')}
+                  placeholder="e.g. 150"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Monthly KM Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.monthlyKmLimit}
+                  onChange={set('monthlyKmLimit')}
+                  placeholder="e.g. 4000"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total KM Limit</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.totalKmLimit}
+                  onChange={set('totalKmLimit')}
+                  placeholder="e.g. 60000"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Excess KM Rate (R per km)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.excessKmRate}
+                  onChange={set('excessKmRate')}
+                  placeholder="e.g. 2.50"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">KM at Start</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.kmAtStart}
+                  onChange={set('kmAtStart')}
+                  placeholder="Current odometer reading"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Notes/terms */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">

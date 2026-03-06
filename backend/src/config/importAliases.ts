@@ -3,7 +3,7 @@
  * All alias values are lowercase for case-insensitive matching.
  */
 
-export type EntityType = 'vehicle' | 'driver' | 'fleet';
+export type EntityType = 'vehicle' | 'driver' | 'fleet' | 'tag';
 
 export type AliasMap = Record<string, string[]>;
 
@@ -141,10 +141,31 @@ export const FLEET_ALIASES: AliasMap = {
   ],
 };
 
+export const TAG_ALIASES: AliasMap = {
+  tagNumber: [
+    'tag number', 'tag no', 'tag', 'tag id', 'fuel tag', 'tag code',
+    'card number', 'card no', 'fuel card', 'transponder',
+  ],
+  vehicleRegistration: [
+    'vehicle', 'vehicle registration', 'registration', 'reg number', 'reg no',
+    'vehicle reg', 'plate', 'number plate',
+  ],
+  status: [
+    'status', 'tag status', 'state', 'active',
+  ],
+  issuedDate: [
+    'issued date', 'issue date', 'issued', 'date issued', 'start date', 'activation date',
+  ],
+  expiryDate: [
+    'expiry date', 'expiry', 'expires', 'expiration', 'expiration date', 'valid until', 'end date',
+  ],
+};
+
 export function getAliasMap(entityType: EntityType): AliasMap {
   switch (entityType) {
     case 'vehicle': return VEHICLE_ALIASES;
     case 'driver': return DRIVER_ALIASES;
     case 'fleet': return FLEET_ALIASES;
+    case 'tag': return TAG_ALIASES;
   }
 }

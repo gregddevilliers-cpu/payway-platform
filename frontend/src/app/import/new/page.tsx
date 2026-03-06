@@ -8,7 +8,7 @@ import { ApiError } from '../../../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type EntityType = 'vehicle' | 'driver' | 'fleet';
+type EntityType = 'vehicle' | 'driver' | 'fleet' | 'tag';
 type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 interface ColumnMatch {
@@ -65,6 +65,7 @@ const ENTITY_TYPES: { value: EntityType; label: string; description: string }[] 
   { value: 'vehicle', label: 'Vehicles', description: 'Registration numbers, makes, models, fuel types' },
   { value: 'driver', label: 'Drivers', description: 'Names, SA IDs, licence codes, contact details' },
   { value: 'fleet', label: 'Fleets', description: 'Fleet names, codes, regions' },
+  { value: 'tag', label: 'Tags', description: 'Fuel tags, card numbers, vehicle assignments' },
 ];
 
 const CONFIDENCE_COLOUR = (c: number) =>
@@ -650,7 +651,7 @@ export default function ImportWizardPage() {
                 href={`/${entityType}s`}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
-                View {entityType === 'vehicle' ? 'Vehicles' : entityType === 'driver' ? 'Drivers' : 'Fleets'} →
+                View {entityType === 'vehicle' ? 'Vehicles' : entityType === 'driver' ? 'Drivers' : entityType === 'fleet' ? 'Fleets' : 'Tags'} →
               </Link>
             </div>
           </div>
